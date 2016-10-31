@@ -41,10 +41,10 @@ class ImageQTNode:
         rects.append((x0, y0 + h, x0 + h, y1))
         rects.append((x0 + h, y0 + h, x1, y1))
         for n in range(len(rects)):
-            self.children[n] = self.getinstance(rects[n])
+            self.children[n] = self.get_instance(rects[n])
             self.children[n].subdivide()  # << recursion
 
-    def getinstance(self, rect):
+    def get_instance(self, rect):
         return ImageQTNode(self, rect, self.image, self.threshold, self.min_size, self.max_size)
 
     def spans_homogeneity(self, rect):

@@ -43,9 +43,3 @@ class ImageQT:
                 image[x1 - 1][y] = 0
 
         return image
-
-
-
-
-
-
