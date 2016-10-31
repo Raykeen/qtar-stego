@@ -2,23 +2,19 @@ from PIL import Image
 from numpy import array
 from ImageQTNode import ImageQTNode
 from ImageQT import ImageQT
-image = Image.open("images/lenna.jpg")
+img = Image.open("images/lenna.png")
 
-image_channels = dict()
-image_channels['r'], image_channels['g'], image_channels['b'] = image.split()
 
-rect = [0, 0, 128, 128]
+def prepare_image(image, size):
+    cropped = image.crop((0, 0, size, size))
+    image_channels = dict()
+    image_channel_arrays = dict()
+    image_channels['r'], image_channels['g'], image_channels['b'] = cropped.split()
+    for channel in image_channels:
+        image_channel_arrays[channel] = array(image_channels[channel])
+    return image_channel_arrays
 
-root_node = ImageQTNode(None, rect, array(image_channels['r']), 20, 8, 128)
+rect = [0, 0, 512, 512]
+root_node = ImageQTNode(None, rect, prepare_image(img, 512)['r'], 150, 2, 512)
 qtree = ImageQT(root_node)
-
-for image_node in qtree.leaves:
-    x0, y0, x1, y1 = image_node.rect
-    region = image_node.image[x0:x1, y0:y1]
-    img_region = Image.fromarray(region)
-    print(img_region)
-
-
-# def qtar(cover_image, message, threshold = 0.6, max_block_size = 1024, min_block_size = 8):
-
-#print(array(image.split()[0]))
+Image.fromarray(qtree.image_with_qt_borders()).show()

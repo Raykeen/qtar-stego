@@ -32,13 +32,14 @@ class ImageQTNode:
             self.type = ImageQTNode.LEAF
             return
 
-        x0, z0, x1, z1 = self.rect
+        x0, y0, x1, y1 = self.rect
+
         h = int((x1 - x0) / 2)
         rects = list()
-        rects.append((x0, z0, x0 + h, z0 + h))
-        rects.append((x0, z0 + h, x0 + h, z1))
-        rects.append((x0 + h, z0 + h, x1, z1))
-        rects.append((x0 + h, z0, x1, z0 + h))
+        rects.append((x0, y0, x0 + h, y0 + h))
+        rects.append((x0 + h, y0, x1, y0 + h))
+        rects.append((x0, y0 + h, x0 + h, y1))
+        rects.append((x0 + h, y0 + h, x1, y1))
         for n in range(len(rects)):
             self.children[n] = self.getinstance(rects[n])
             self.children[n].subdivide()  # << recursion
@@ -47,9 +48,14 @@ class ImageQTNode:
         return ImageQTNode(self, rect, self.image, self.threshold, self.min_size, self.max_size)
 
     def spans_homogeneity(self, rect):
-        x0, y0, x1, y1 = rect
-        region = self.image[x0:x1, y0:y1]
+        region = self.get_region(rect)
         max_value = np.amax(region)
         min_value = np.amin(region)
         homogeneity = max_value - min_value
         return homogeneity < self.threshold
+
+    def get_region(self, rect=None):
+        if not rect:
+            rect = self.rect
+        x0, y0, x1, y1 = rect
+        return self.image[x0:x1, y0:y1]
