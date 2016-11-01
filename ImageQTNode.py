@@ -52,7 +52,7 @@ class ImageQTNode:
         max_value = np.amax(region)
         min_value = np.amin(region)
         homogeneity = max_value - min_value
-        return homogeneity < self.threshold
+        return homogeneity < self.threshold * 255
 
     def get_region(self, rect=None):
         if not rect:
