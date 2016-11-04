@@ -1,17 +1,15 @@
+from MatrixRegion import *
 import numpy as np
 
 
-class ImageQTNode:
+class ImageQTNode(MatrixRegion):
     ROOT = 0
     BRANCH = 1
     LEAF = 2
 
     def __init__(self, parent, rect, image, threshold, min_size, max_size):
+        super().__init__(rect, image)
         self.parent = parent
-        self.rect = rect
-        x0, y0, x1, y1 = rect
-        self.size = x1 - x0
-        self.image = image
         self.threshold = threshold
         self.min_size = min_size
         self.max_size = max_size
@@ -45,7 +43,7 @@ class ImageQTNode:
             self.children[n].subdivide()  # << recursion
 
     def get_instance(self, rect):
-        return ImageQTNode(self, rect, self.image, self.threshold, self.min_size, self.max_size)
+        return ImageQTNode(self, rect, self.matrix, self.threshold, self.min_size, self.max_size)
 
     def spans_homogeneity(self, rect):
         region = self.get_region(rect)
@@ -53,9 +51,3 @@ class ImageQTNode:
         min_value = np.amin(region)
         homogeneity = max_value - min_value
         return homogeneity < self.threshold * 255
-
-    def get_region(self, rect=None):
-        if not rect:
-            rect = self.rect
-        x0, y0, x1, y1 = rect
-        return self.image[x0:x1, y0:y1]

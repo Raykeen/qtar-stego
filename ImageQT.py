@@ -1,5 +1,4 @@
-from ImageQTNode import ImageQTNode
-import numpy as np
+from ImageQTNode import *
 
 
 class ImageQT:
@@ -31,15 +30,3 @@ class ImageQT:
         for child in node.children:
             if child:
                 self._traverse(child)  # << recursion
-
-    def image_with_qt_borders(self):
-        image = np.copy(self.root_node.image)
-        for leave in self.leaves:
-            x0, y0, x1, y1 = leave.rect
-            for x in range(x0, x1 - 1):
-                image[x][y1 - 1] = 0
-
-            for y in range(y0, y1 - 1):
-                image[x1 - 1][y] = 0
-
-        return image

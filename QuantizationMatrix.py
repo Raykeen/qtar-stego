@@ -15,4 +15,4 @@ class QuantizationMatrix:
 
     @staticmethod
     def get_matrix(n=8):
-        return zoom(QuantizationMatrix.MATRIX, n / 8, order = 1)
+        return zoom(QuantizationMatrix.MATRIX, n / 8, order=1)
