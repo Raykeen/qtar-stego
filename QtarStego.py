@@ -15,6 +15,7 @@ class QtarStego:
         self.max_block_size = max_block_size
         self.image = Image.new("RGB", (512, 512), "white")
         self.size = 512
+        self.image_chs = {'r': [], 'g': [], 'b': []}
         self.qt_regions_chs = {'r': [], 'g': [], 'b': []}
         self.img_dct_chs = {'r': [], 'g': [], 'b': []}
         self.stego_img_chs = {'r': [], 'g': [], 'b': []}
@@ -24,8 +25,8 @@ class QtarStego:
         self.image = image
         self.size = int(pow(2, int(log2(image.width & image.height))))
 
-        image_chs = self._prepare_image(self.size)
-        for channel, image_ch in image_chs.items():
+        self.image_chs = self._prepare_image(self.size)
+        for channel, image_ch in self.image_chs.items():
             self._embed_in_channel(channel, image_ch, message)
 
     def _embed_in_channel(self, channel, image_ch, message=None):
@@ -40,12 +41,15 @@ class QtarStego:
         dct_regions = MatrixRegion.new_matrix_regions(qt_regions, img_dct)
         aregions = self._adapt_regions(dct_regions)
 
+        for aregion in aregions:
+            aregion.each(lambda value, x, y: 0)
+
         stego_img = self._dct_2d(dct_regions, True)
 
         self.qt_regions_chs[channel] = qt_regions
         self.img_dct_chs[channel] = img_dct
-        self.stego_img_chs[channel] = stego_img
         self.aregions_chs[channel] = aregions
+        self.stego_img_chs[channel] = stego_img
 
     def _prepare_image(self, size):
         cropped = self.image.crop((0, 0, size, size))
@@ -105,10 +109,13 @@ class QtarStego:
 
     @staticmethod
     def convert_chs_to_image(matrix_chs):
-        image_chs = {channel: Image.fromarray(uint8(image_ch))
+        image_chs = {channel: Image.fromarray(image_ch).convert('L')
                      for channel, image_ch in matrix_chs.items()}
         result_image = Image.merge("RGB", (image_chs['r'], image_chs['g'], image_chs['b']))
         return result_image
+
+    def get_container_image(self):
+        return self.convert_chs_to_image(self.image_chs)
 
     def get_qt_image(self):
         matrix_chs = {channel: MatrixRegion.get_matrix_with_borders(qtree_regions, only_right_bottom=True)
@@ -116,14 +123,11 @@ class QtarStego:
         return self.convert_chs_to_image(matrix_chs)
 
     def get_dct_image(self):
-        max_dct_value = max([image_ch.max() for image_ch in self.img_dct_chs.values()])
-        matrix_chs = {channel: image_dct*255/max_dct_value
-                     for channel, image_dct in self.img_dct_chs.items()}
-        return self.convert_chs_to_image(matrix_chs)
+        return self.convert_chs_to_image(self.img_dct_chs)
 
     def get_ar_image(self):
         max_dct_value = max([image_ch.max() for image_ch in self.img_dct_chs.values()])
-        matrix_chs = {channel: MatrixRegion.get_matrix_with_borders(aregions, max_dct_value)*255/max_dct_value
+        matrix_chs = {channel: MatrixRegion.get_matrix_with_borders(aregions, max_dct_value)
                       for channel, aregions in self.aregions_chs.items()}
         return self.convert_chs_to_image(matrix_chs)
 
@@ -139,6 +143,7 @@ def main(argv):
     img = Image.open(argv[1])
     qtar = QtarStego()
     qtar.embed(img)
+    qtar.get_container_image().show()
     qtar.get_qt_image().show()
     qtar.get_dct_image().show()
     qtar.get_ar_image().show()

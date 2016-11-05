@@ -16,6 +16,12 @@ class MatrixRegion:
         x0, y0, x1, y1 = rect
         return matrix[x0:x1, y0:y1]
 
+    def each(self, func):
+        x0, y0, x1, y1 = self.rect
+        for x in range(x0, x1):
+            for y in range(y0, y1):
+                self.matrix[x][y] = func(self.matrix, x, y)
+
     @staticmethod
     def new_matrix_regions(regions, matrix):
         new_regions = list()
