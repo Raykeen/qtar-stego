@@ -17,7 +17,7 @@ class QtarStego:
         self.ch_scale = ch_scale
         self.image = Image.new("RGB", (512, 512), "white")
         self.size = 512
-        self.key_data = {'wm_size': None, 'aregions-indexes': {'r': [], 'g': [], 'b': []}}
+        self.key_data = {'wm_size': None, 'aregions': {'r': [], 'g': [], 'b': []}}
         self.image_chs = {'r': [], 'g': [], 'b': []}
         self.qt_regions_chs = {'r': [], 'g': [], 'b': []}
         self.img_dct_chs = {'r': [], 'g': [], 'b': []}
@@ -29,10 +29,12 @@ class QtarStego:
         self.image = image
         self.size = int(pow(2, int(log2(image.width & image.height))))
         self.image_chs = self._prepare_image(image, self.size)
-        self.watermark_chs = self._prepare_image(watermark, 256)
+        sized_wm = watermark.copy()
+        sized_wm.thumbnail((300,300))
+        self.watermark_chs = self._prepare_image(sized_wm)
         self.key_data['wm_size'] = self.watermark_chs['r'].shape
         for channel, image_ch in self.image_chs.items():
-            self.key_data['aregions-indexes'][channel] = self._embed_in_channel(channel, image_ch, self.watermark_chs[channel])
+            self.key_data['aregions'][channel] = self._embed_in_channel(channel, image_ch, self.watermark_chs[channel])
 
         return self.key_data
 
@@ -66,32 +68,25 @@ class QtarStego:
         self.aregions_chs[channel] = adaptive_regions.regions
         self.stego_img_chs[channel] = stego_img
 
-        return adaptive_regions.indexes
+        return adaptive_regions
 
     def _extract_from_channel(self, channel, stego_image_ch, key_data):
-        aregions_indexes = key_data['aregions-indexes'][channel]
+        aregions = key_data['aregions'][channel]
         wm_size = key_data['wm_size']
+        qt_regions = MatrixRegion.new_matrix_regions(aregions.base_regions, stego_image_ch)
 
-        root_node = ImageQTNode(None,
-                                [0, 0, self.size, self.size],
-                                stego_image_ch,
-                                self.homogeneity_threshold,
-                                self.min_block_size,
-                                self.max_block_size & self.size)
-        qt_regions = ImageQT(root_node).leaves
         img_dct = self._dct_2d(qt_regions)
         dct_regions = MatrixRegion.new_matrix_regions(qt_regions, img_dct)
-        #adaptive_regions = AdaptiveRegions(dct_regions, self.quant_power, aregions_indexes)
+        adaptive_regions = AdaptiveRegions(dct_regions, self.quant_power, aregions.indexes)
 
-        #watermark_ch = self._extract_from_aregions(adaptive_regions.regions, wm_size)
+        watermark_ch = self._extract_from_aregions(adaptive_regions.regions, wm_size)
 
         self.qt_regions_chs[channel] = qt_regions
         self.img_dct_chs[channel] = img_dct
-        #self.aregions_chs[channel] = adaptive_regions.regions
-        #self.watermark_chs[channel] = watermark_ch
+        self.aregions_chs[channel] = adaptive_regions.regions
+        self.watermark_chs[channel] = watermark_ch
 
-        #return watermark_ch
-        return stego_image_ch
+        return watermark_ch
 
     def _embed_in_aregions(self, aregions, watermark_ch):
         i, j = 0, 0
@@ -197,16 +192,15 @@ def main(argv):
     watermark = Image.open("images\Garold.jpg")
     qtar = QtarStego()
     key_data = qtar.embed(img, watermark)
-    #qtar.get_container_image().show()
-    qtar.get_qt_image().show()
-    qtar.get_dct_image().show()
-    qtar.get_ar_image().show()
-    qtar.get_stego_image().show()
-    qtar.get_wm().show()
+    qtar.get_container_image().save('images\stages\\1-container.bmp')
+    qtar.get_qt_image().save('images\stages\\2-quad_tree.bmp')
+    qtar.get_dct_image().save('images\stages\\3-dct.bmp')
+    qtar.get_ar_image().save('images\stages\\4-adaptive_regions.bmp')
+    qtar.get_stego_image().save('images\stages\\6-stego_image.bmp')
+    qtar.get_wm().save('images\stages\\5-watermark.bmp')
 
-    qtar.extract(qtar.get_stego_image(), key_data)
-    qtar.get_qt_image().show()
-    # qtar.show_stego()
+    qtar.extract(qtar.get_stego_image(), key_data).save('images\stages\\7-extracted_watermark.bmp')
+    #qtar.get_qt_image().show()
 
 
 if __name__ == "__main__":
