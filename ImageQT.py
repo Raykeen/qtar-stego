@@ -1,32 +1,75 @@
-from ImageQTNode import *
+from MatrixRegion import *
+import numpy as np
 
 
-class ImageQT:
-    def __init__(self, root_node):
-        root_node.subdivide()  # constructs the network of nodes
-        self.root_node = root_node
+class QtNode:
+    ROOT = 0
+    BRANCH = 1
+    LEAF = 2
+
+    def __init__(self, parent, rect=None):
+        self.parent = parent
+        self.children = [None, None, None, None]
+        self.rect = rect
+        x0, y0, x1, y1 = self.rect
+        self.size = x1-x0
+        if not parent:
+            self.depth = 0
+        else:
+            self.depth = parent.depth + 1
+
+        if not self.parent:
+            self.type = QtNode.ROOT
+        else:
+            self.type = QtNode.LEAF
+
+    def subdivide(self):
+        x0, y0, x1, y1 = self.rect
+
+        h = int((x1 - x0) / 2)
+        rects = list()
+        rects.append((x0, y0, x0 + h, y0 + h))
+        rects.append((x0 + h, y0, x1, y0 + h))
+        rects.append((x0, y0 + h, x0 + h, y1))
+        rects.append((x0 + h, y0 + h, x1, y1))
+        self.type = QtNode.BRANCH
+        for n in range(len(rects)):
+            self.children[n] = QtNode(self, rects[n])
+
+        return self.children
+
+
+class ImageQT(MatrixRegions):
+    def __init__(self, matrix, min_size, max_size, threshold):
+        super().__init__([], matrix)
+        self.threshold = threshold
+        self.min_size = min_size
+        self.max_size = max_size
+        self.max_depth = 0
         self.all_nodes = []
         self.leaves = []
-        self.max_depth = 0
-        self._prune(root_node)
-        self._traverse(root_node)
+        self.build_tree(QtNode(None, (0, 0, matrix.shape[1], matrix.shape[0])))
+        self.rects = [leave.rect for leave in self.leaves]
 
-    def _prune(self, node):
-        if node.type == ImageQTNode.LEAF:
-            return
-        if not node.children[0]:
-            node.type = ImageQTNode.LEAF
-            return
-
-        for child in node.children:
-            self._prune(child)
-
-    def _traverse(self, node):
+    def build_tree(self, node):
+        too_big = node.size > self.max_size
+        too_small = node.size <= self.min_size
         self.all_nodes.append(node)
-        if node.type == ImageQTNode.LEAF:
-            self.leaves.append(node)
+
+        if (not too_big and self.spans_homogeneity(node.rect)) or too_small:
             if node.depth > self.max_depth:
                 self.max_depth = node.depth
-        for child in node.children:
-            if child:
-                self._traverse(child)  # << recursion
+            self.leaves.append(node)
+            return
+
+        children = node.subdivide()
+        for child in children:
+            self.build_tree(child)
+
+    def spans_homogeneity(self, rect):
+        region = self.get_region(rect)
+        max_value = np.amax(region)
+        min_value = np.amin(region)
+        homogeneity = max_value - min_value
+        return homogeneity < self.threshold * 256
+
