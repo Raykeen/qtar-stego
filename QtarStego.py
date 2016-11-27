@@ -1,9 +1,9 @@
 import sys
 from PIL import Image
-from numpy import array, zeros, uint8
+from numpy import array, zeros, uint8, append
 from math import log2, pow
 from scipy.fftpack import dct, idct
-from ImageQTNode import *
+from itertools import islice
 from ImageQT import *
 from AdaptiveRegions import *
 
@@ -17,10 +17,10 @@ class QtarStego:
         self.ch_scale = ch_scale
         self.image = Image.new("RGB", (512, 512), "white")
         self.size = 512
-        self.key_data = {'wm_size': None, 'aregions': {'r': [], 'g': [], 'b': []}}
+        self.key_data = {'wm_shape': None, 'aregions': {'r': [], 'g': [], 'b': []}}
         self.image_chs = {'r': [], 'g': [], 'b': []}
         self.qt_regions_chs = {'r': [], 'g': [], 'b': []}
-        self.img_dct_chs = {'r': [], 'g': [], 'b': []}
+        self.dct_regions_chs = {'r': [], 'g': [], 'b': []}
         self.stego_img_chs = {'r': [], 'g': [], 'b': []}
         self.aregions_chs = {'r': [], 'g': [], 'b': []}
         self.watermark_chs = {'r': [], 'g': [], 'b': []}
@@ -32,7 +32,7 @@ class QtarStego:
         sized_wm = watermark.copy()
         sized_wm.thumbnail((300,300))
         self.watermark_chs = self._prepare_image(sized_wm)
-        self.key_data['wm_size'] = self.watermark_chs['r'].shape
+        self.key_data['wm_shape'] = self.watermark_chs['r'].shape
         for channel, image_ch in self.image_chs.items():
             self.key_data['aregions'][channel] = self._embed_in_channel(channel, image_ch, self.watermark_chs[channel])
 
@@ -48,74 +48,76 @@ class QtarStego:
         return self.get_wm()
 
     def _embed_in_channel(self, channel, image_ch, watermark_ch=None):
-        root_node = ImageQTNode(None,
-                                [0, 0, self.size, self.size],
-                                image_ch,
-                                self.homogeneity_threshold,
-                                self.min_block_size,
-                                min(self.max_block_size, self.size))
-        qt_regions = ImageQT(root_node).leaves
-        img_dct = self._dct_2d(qt_regions)
-        dct_regions = MatrixRegion.new_matrix_regions(qt_regions, img_dct)
+        qt_regions = ImageQT(image_ch,
+                             self.min_block_size,
+                             min(self.max_block_size, self.size),
+                             self.homogeneity_threshold)
+        dct_regions = self._dct_2d(qt_regions)
         adaptive_regions = AdaptiveRegions(dct_regions, self.quant_power)
-
         self._embed_in_aregions(adaptive_regions.regions, watermark_ch)
-
         stego_img = self._dct_2d(dct_regions, True)
 
         self.qt_regions_chs[channel] = qt_regions
-        self.img_dct_chs[channel] = img_dct
+        self.dct_regions_chs[channel] = dct_regions
         self.aregions_chs[channel] = adaptive_regions.regions
-        self.stego_img_chs[channel] = stego_img
+        self.stego_img_chs[channel] = stego_img.matrix
 
         return adaptive_regions
 
     def _extract_from_channel(self, channel, stego_image_ch, key_data):
         aregions = key_data['aregions'][channel]
-        wm_size = key_data['wm_size']
-        qt_regions = MatrixRegion.new_matrix_regions(aregions.base_regions, stego_image_ch)
-
-        img_dct = self._dct_2d(qt_regions)
-        dct_regions = MatrixRegion.new_matrix_regions(qt_regions, img_dct)
+        wm_shape = key_data['wm_shape']
+        qt_regions = MatrixRegions(aregions.base_regions.rects, stego_image_ch)
+        dct_regions = self._dct_2d(qt_regions)
         adaptive_regions = AdaptiveRegions(dct_regions, self.quant_power, aregions.indexes)
 
-        watermark_ch = self._extract_from_aregions(adaptive_regions.regions, wm_size)
+        watermark_ch = self._extract_from_aregions(adaptive_regions.regions, wm_shape)
 
         self.qt_regions_chs[channel] = qt_regions
-        self.img_dct_chs[channel] = img_dct
+        self.dct_regions_chs[channel] = dct_regions
         self.aregions_chs[channel] = adaptive_regions.regions
         self.watermark_chs[channel] = watermark_ch
 
         return watermark_ch
 
     def _embed_in_aregions(self, aregions, watermark_ch):
-        i, j = 0, 0
-        imax, jmax = watermark_ch.shape
+        wm_iter = watermark_ch.flat
+        stop = False
+        for i in range(0, aregions.count):
+            aregion = aregions[i]
+            size = aregion.size
+            shape = aregion.shape
+            flat_stego_region = array(list(islice(wm_iter, size)))
+            if flat_stego_region.size < size:
+                flat_aregion = list(aregion.flat)
+                flat_stego_region = append(flat_stego_region, flat_aregion[flat_stego_region.size:size])
+                stop = True
+            stego_region = flat_stego_region.reshape(shape)
+            aregions[i] = stego_region / 255 * self.ch_scale
+            if stop: return
 
-        for aregion in aregions:
-            x0, y0, x1, y1 = aregion.rect
-            for y in range(y0, y1):
-                for x in range(x0, x1):
-                    aregion.matrix[x, y] = watermark_ch[i, j] / 255 * self.ch_scale
-                    i += (j + 1) // jmax
-                    j = (j + 1) % jmax
-                    if i >= imax:
-                        break
-                if i >= imax:
-                    break
-            if i >= imax:
+    def _extract_from_aregions(self, aregions, wm_shape):
+        flat_stego_region = array([])
+        wm_size = wm_shape[0] * wm_shape[1]
+        for i in range(0, aregions.count):
+            aregion = aregions[i]
+            flat_aregion = list(aregion.flat)
+            flat_stego_region = append(flat_stego_region, flat_aregion)
+            if flat_stego_region.size >= wm_size:
                 break
+        watermark_ch = flat_stego_region[0:wm_size].reshape(wm_shape)
+        return watermark_ch * 255 / self.ch_scale
 
-    def _extract_from_aregions(self, aregions, wm_size):
+    def _extract_from_aregions2(self, aregions, wm_shape):
         i, j = 0, 0
-        imax, jmax = wm_size
-        watermark_ch = zeros(wm_size)
+        imax, jmax = wm_shape
+        watermark_ch = zeros(wm_shape)
 
-        for aregion in aregions:
-            x0, y0, x1, y1 = aregion.rect
+        for arect in aregions.rects:
+            x0, y0, x1, y1 = arect
             for y in range(y0, y1):
                 for x in range(x0, x1):
-                    watermark_ch[i, j] = aregion.matrix[x, y] * 255 / self.ch_scale
+                    watermark_ch[i, j] = aregions.matrix[y, x] * 255 / self.ch_scale
                     i += (j + 1) // jmax
                     j = (j + 1) % jmax
                     if i >= imax:
@@ -140,21 +142,17 @@ class QtarStego:
         return image_channel_arrays
 
     def _dct_2d(self, regions, inverse=False):
-        result = zeros((self.size, self.size))
+        result_mx = zeros((self.size, self.size))
+        dct_regions = MatrixRegions(regions.rects, result_mx)
+        i = 0
         for region in regions:
-            rect = region.rect
-            x0, y0, x1, y1 = rect
-            region = region.get_region()
             if inverse:
                 region_dct = idct(idct(region.T, norm='ortho').T, norm='ortho')
             else:
                 region_dct = dct(dct(region, norm='ortho').T, norm='ortho').T
-            for x in range(x0, x1):
-                for y in range(y0, y1):
-                    i = x - x0
-                    j = y - y0
-                    result[x][y] = region_dct[i][j]
-        return result
+            dct_regions[i] = region_dct
+            i += 1
+        return dct_regions
 
     @staticmethod
     def convert_chs_to_image(matrix_chs):
@@ -167,18 +165,18 @@ class QtarStego:
         return self.convert_chs_to_image(self.image_chs)
 
     def get_qt_image(self):
-        matrix_chs = {channel: MatrixRegion.get_matrix_with_borders(qtree_regions, only_right_bottom=True)
+        matrix_chs = {channel: qtree_regions.get_matrix_with_borders(only_right_bottom=True)
                      for channel, qtree_regions in self.qt_regions_chs.items()}
         return self.convert_chs_to_image(matrix_chs)
 
     def get_dct_image(self):
-        matrix_chs = {channel: img_dct_ch * 5
-                      for channel, img_dct_ch in self.img_dct_chs.items()}
+        matrix_chs = {channel: dct_regions.matrix * 5
+                      for channel, dct_regions in self.dct_regions_chs.items()}
         return self.convert_chs_to_image(matrix_chs)
 
     def get_ar_image(self):
-        max_dct_value = max([image_ch.max() for image_ch in self.img_dct_chs.values()])
-        matrix_chs = {channel: MatrixRegion.get_matrix_with_borders(aregions, max_dct_value)
+        max_dct_value = max([dct_regions.matrix.max() for dct_regions in self.dct_regions_chs.values()])
+        matrix_chs = {channel: aregions.get_matrix_with_borders(value=max_dct_value)
                       for channel, aregions in self.aregions_chs.items()}
         return self.convert_chs_to_image(matrix_chs)
 
@@ -202,7 +200,6 @@ def main(argv):
     qtar.get_wm().save('images\stages\\5-watermark.bmp')
 
     qtar.extract(qtar.get_stego_image(), key_data).save('images\stages\\7-extracted_watermark.bmp')
-    #qtar.get_qt_image().show()
 
 
 if __name__ == "__main__":
