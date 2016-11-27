@@ -27,7 +27,7 @@ class QtarStego:
 
     def embed(self, image, watermark=None):
         self.image = image
-        self.size = int(pow(2, int(log2(image.width & image.height))))
+        self.size = int(pow(2, int(log2(min(image.width, image.height)))))
         self.image_chs = self._prepare_image(image, self.size)
         sized_wm = watermark.copy()
         sized_wm.thumbnail((300,300))
@@ -40,7 +40,7 @@ class QtarStego:
 
     def extract(self, stego_image, key_data):
         self.key_data = key_data
-        self.size = stego_image.width & stego_image.height
+        self.size = min(stego_image.width, stego_image.height)
         self.stego_img_chs = self._prepare_image(stego_image)
         for channel, stego_image_ch in self.stego_img_chs.items():
             self.watermark_chs[channel] = self._extract_from_channel(channel, stego_image_ch, self.key_data)
@@ -53,7 +53,7 @@ class QtarStego:
                                 image_ch,
                                 self.homogeneity_threshold,
                                 self.min_block_size,
-                                self.max_block_size & self.size)
+                                min(self.max_block_size, self.size))
         qt_regions = ImageQT(root_node).leaves
         img_dct = self._dct_2d(qt_regions)
         dct_regions = MatrixRegion.new_matrix_regions(qt_regions, img_dct)
@@ -172,7 +172,9 @@ class QtarStego:
         return self.convert_chs_to_image(matrix_chs)
 
     def get_dct_image(self):
-        return self.convert_chs_to_image(self.img_dct_chs)
+        matrix_chs = {channel: img_dct_ch * 5
+                      for channel, img_dct_ch in self.img_dct_chs.items()}
+        return self.convert_chs_to_image(matrix_chs)
 
     def get_ar_image(self):
         max_dct_value = max([image_ch.max() for image_ch in self.img_dct_chs.values()])
