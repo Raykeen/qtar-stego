@@ -1,6 +1,7 @@
 import sys
 from PIL import Image
-from numpy import array, zeros, uint8, append
+from PIL import ImageChops
+from numpy import array, zeros, append
 from math import log2, pow
 from scipy.fftpack import dct, idct
 from itertools import islice
@@ -9,12 +10,19 @@ from AdaptiveRegions import *
 
 
 class QtarStego:
-    def __init__(self, homogeneity_threshold=0.4, min_block_size=8, max_block_size=512, quant_power=0.2, ch_scale=4.37):
+    def __init__(self,
+                 homogeneity_threshold=0.4,
+                 min_block_size=8,
+                 max_block_size=512,
+                 quant_power=0.2,
+                 ch_scale=4.37,
+                 offset=None):
         self.homogeneity_threshold = homogeneity_threshold
         self.min_block_size = min_block_size
         self.max_block_size = max_block_size
         self.quant_power = quant_power
         self.ch_scale = ch_scale
+        self.offset = offset
         self.image = Image.new("RGB", (512, 512), "white")
         self.size = 512
         self.key_data = {'wm_shape': None, 'aregions': {'r': [], 'g': [], 'b': []}}
@@ -28,7 +36,7 @@ class QtarStego:
     def embed(self, image, watermark=None):
         self.image = image
         self.size = int(pow(2, int(log2(min(image.width, image.height)))))
-        self.image_chs = self._prepare_image(image, self.size)
+        self.image_chs = self._prepare_image(image, self.size, self.offset)
         sized_wm = watermark.copy()
         sized_wm.thumbnail((300,300))
         self.watermark_chs = self._prepare_image(sized_wm)
@@ -41,7 +49,7 @@ class QtarStego:
     def extract(self, stego_image, key_data):
         self.key_data = key_data
         self.size = min(stego_image.width, stego_image.height)
-        self.stego_img_chs = self._prepare_image(stego_image)
+        self.stego_img_chs = self._prepare_image(stego_image, offset=self.offset)
         for channel, stego_image_ch in self.stego_img_chs.items():
             self.watermark_chs[channel] = self._extract_from_channel(channel, stego_image_ch, self.key_data)
 
@@ -108,35 +116,18 @@ class QtarStego:
         watermark_ch = flat_stego_region[0:wm_size].reshape(wm_shape)
         return watermark_ch * 255 / self.ch_scale
 
-    def _extract_from_aregions2(self, aregions, wm_shape):
-        i, j = 0, 0
-        imax, jmax = wm_shape
-        watermark_ch = zeros(wm_shape)
+    def _prepare_image(self, image, size=None, offset=None):
+        prepared = image
 
-        for arect in aregions.rects:
-            x0, y0, x1, y1 = arect
-            for y in range(y0, y1):
-                for x in range(x0, x1):
-                    watermark_ch[i, j] = aregions.matrix[y, x] * 255 / self.ch_scale
-                    i += (j + 1) // jmax
-                    j = (j + 1) % jmax
-                    if i >= imax:
-                        break
-                if i >= imax:
-                    break
-            if i >= imax:
-                break
-
-        return watermark_ch
-
-    def _prepare_image(self, image, size=None):
         if size:
-            cropped = image.crop((0, 0, size, size))
-        else:
-            cropped = image
+            prepared = prepared.crop((0, 0, size, size))
+        if offset:
+            x, y = offset
+            prepared = ImageChops.offset(prepared, x, y)
+
         image_channels = dict()
         image_channel_arrays = dict()
-        image_channels['r'], image_channels['g'], image_channels['b'] = cropped.split()
+        image_channels['r'], image_channels['g'], image_channels['b'] = prepared.split()
         for channel in image_channels:
             image_channel_arrays[channel] = array(image_channels[channel])
         return image_channel_arrays
@@ -155,33 +146,37 @@ class QtarStego:
         return dct_regions
 
     @staticmethod
-    def convert_chs_to_image(matrix_chs):
+    def convert_chs_to_image(matrix_chs, offset=None):
         image_chs = {channel: Image.fromarray(image_ch).convert('L')
                      for channel, image_ch in matrix_chs.items()}
         result_image = Image.merge("RGB", (image_chs['r'], image_chs['g'], image_chs['b']))
+        if offset:
+            x, y = offset
+            result_image = ImageChops.offset(result_image, -x, -y)
+
         return result_image
 
     def get_container_image(self):
-        return self.convert_chs_to_image(self.image_chs)
+        return self.convert_chs_to_image(self.image_chs, self.offset)
 
     def get_qt_image(self):
         matrix_chs = {channel: qtree_regions.get_matrix_with_borders(only_right_bottom=True)
                      for channel, qtree_regions in self.qt_regions_chs.items()}
-        return self.convert_chs_to_image(matrix_chs)
+        return self.convert_chs_to_image(matrix_chs, self.offset)
 
     def get_dct_image(self):
-        matrix_chs = {channel: dct_regions.matrix * 5
+        matrix_chs = {channel: dct_regions.matrix * 10
                       for channel, dct_regions in self.dct_regions_chs.items()}
-        return self.convert_chs_to_image(matrix_chs)
+        return self.convert_chs_to_image(matrix_chs, self.offset)
 
     def get_ar_image(self):
         max_dct_value = max([dct_regions.matrix.max() for dct_regions in self.dct_regions_chs.values()])
         matrix_chs = {channel: aregions.get_matrix_with_borders(value=max_dct_value)
                       for channel, aregions in self.aregions_chs.items()}
-        return self.convert_chs_to_image(matrix_chs)
+        return self.convert_chs_to_image(matrix_chs, self.offset)
 
     def get_stego_image(self):
-        return self.convert_chs_to_image(self.stego_img_chs)
+        return self.convert_chs_to_image(self.stego_img_chs, self.offset)
 
     def get_wm(self):
         return self.convert_chs_to_image(self.watermark_chs)
