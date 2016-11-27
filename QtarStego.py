@@ -8,6 +8,7 @@ from scipy.fftpack import dct, idct
 from itertools import islice
 from ImageQT import *
 from AdaptiveRegions import *
+from metrics import psnr
 
 
 class QtarStego:
@@ -184,7 +185,6 @@ class QtarStego:
 
 
 def main(argv):
-    print(argv)
     argparser = argparse.ArgumentParser()
     argparser.add_argument('container', type=str,
                            help='container image')
@@ -203,18 +203,26 @@ def main(argv):
     argparser.add_argument('-o', metavar='offset', type=int, nargs=2, default=None,
                            help='offset container image     2 x int[0, image_size]')
     args = argparser.parse_args()
-    img = Image.open(argv[1])
-    watermark = Image.open(argv[2])
+
+    img = Image.open(args.container)
+    watermark = Image.open(args.watermark)
+
     qtar = QtarStego(args.t, args.min, args.max, args.q, args.s, args.o)
     key_data = qtar.embed(img, watermark)
+
     qtar.get_container_image().save('images\stages\\1-container.bmp')
     qtar.get_qt_image().save('images\stages\\2-quad_tree.bmp')
     qtar.get_dct_image().save('images\stages\\3-dct.bmp')
     qtar.get_ar_image().save('images\stages\\4-adaptive_regions.bmp')
-    qtar.get_stego_image().save('images\stages\\6-stego_image.bmp')
-    qtar.get_wm().save('images\stages\\5-watermark.bmp')
+    stego_image = qtar.get_stego_image()
+    stego_image.save('images\stages\\6-stego_image.bmp')
+    wm = qtar.get_wm()
+    wm.save('images\stages\\5-watermark.bmp')
 
-    qtar.extract(qtar.get_stego_image(), key_data).save('images\stages\\7-extracted_watermark.bmp')
+    extracted_wm = qtar.extract(stego_image, key_data)
+    extracted_wm.save('images\stages\\7-extracted_watermark.bmp')
+    print("container PSNR: {}".format(psnr(img, stego_image)))
+    print("watermark PSNR: {}".format(psnr(wm, extracted_wm)))
 
 
 if __name__ == "__main__":
