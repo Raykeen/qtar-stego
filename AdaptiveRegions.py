@@ -10,6 +10,9 @@ class AdaptiveRegions:
         self.indexes = indexes or self._find_adaptive_regions()
         self.regions = self._get_adaptive_regions()
 
+    def __len__(self):
+        return len(self.base_regions)
+
     def _find_adaptive_regions(self):
         aregions_indexes = list()
         for base_region in self.base_regions:

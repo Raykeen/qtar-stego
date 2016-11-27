@@ -1,8 +1,9 @@
 import sys
 from PIL import Image
-from numpy import array, zeros, uint8
+from numpy import array, zeros, uint8, append
 from math import log2, pow
 from scipy.fftpack import dct, idct
+from itertools import islice
 from ImageQT import *
 from AdaptiveRegions import *
 
@@ -16,7 +17,7 @@ class QtarStego:
         self.ch_scale = ch_scale
         self.image = Image.new("RGB", (512, 512), "white")
         self.size = 512
-        self.key_data = {'wm_size': None, 'aregions': {'r': [], 'g': [], 'b': []}}
+        self.key_data = {'wm_shape': None, 'aregions': {'r': [], 'g': [], 'b': []}}
         self.image_chs = {'r': [], 'g': [], 'b': []}
         self.qt_regions_chs = {'r': [], 'g': [], 'b': []}
         self.dct_regions_chs = {'r': [], 'g': [], 'b': []}
@@ -31,7 +32,7 @@ class QtarStego:
         sized_wm = watermark.copy()
         sized_wm.thumbnail((300,300))
         self.watermark_chs = self._prepare_image(sized_wm)
-        self.key_data['wm_size'] = self.watermark_chs['r'].shape
+        self.key_data['wm_shape'] = self.watermark_chs['r'].shape
         for channel, image_ch in self.image_chs.items():
             self.key_data['aregions'][channel] = self._embed_in_channel(channel, image_ch, self.watermark_chs[channel])
 
@@ -65,12 +66,12 @@ class QtarStego:
 
     def _extract_from_channel(self, channel, stego_image_ch, key_data):
         aregions = key_data['aregions'][channel]
-        wm_size = key_data['wm_size']
+        wm_shape = key_data['wm_shape']
         qt_regions = MatrixRegions(aregions.base_regions.rects, stego_image_ch)
         dct_regions = self._dct_2d(qt_regions)
         adaptive_regions = AdaptiveRegions(dct_regions, self.quant_power, aregions.indexes)
 
-        watermark_ch = self._extract_from_aregions(adaptive_regions.regions, wm_size)
+        watermark_ch = self._extract_from_aregions(adaptive_regions.regions, wm_shape)
 
         self.qt_regions_chs[channel] = qt_regions
         self.dct_regions_chs[channel] = dct_regions
@@ -80,27 +81,37 @@ class QtarStego:
         return watermark_ch
 
     def _embed_in_aregions(self, aregions, watermark_ch):
-        i, j = 0, 0
-        imax, jmax = watermark_ch.shape
+        wm_iter = watermark_ch.flat
+        stop = False
+        for i in range(0, aregions.count):
+            aregion = aregions[i]
+            size = aregion.size
+            shape = aregion.shape
+            flat_stego_region = array(list(islice(wm_iter, size)))
+            if flat_stego_region.size < size:
+                flat_aregion = list(aregion.flat)
+                flat_stego_region = append(flat_stego_region, flat_aregion[flat_stego_region.size:size])
+                stop = True
+            stego_region = flat_stego_region.reshape(shape)
+            aregions[i] = stego_region / 255 * self.ch_scale
+            if stop: return
 
-        for arect in aregions.rects:
-            x0, y0, x1, y1 = arect
-            for y in range(y0, y1):
-                for x in range(x0, x1):
-                    aregions.matrix[y, x] = watermark_ch[i, j] / 255 * self.ch_scale
-                    i += (j + 1) // jmax
-                    j = (j + 1) % jmax
-                    if i >= imax:
-                        break
-                if i >= imax:
-                    break
-            if i >= imax:
+    def _extract_from_aregions(self, aregions, wm_shape):
+        flat_stego_region = array([])
+        wm_size = wm_shape[0] * wm_shape[1]
+        for i in range(0, aregions.count):
+            aregion = aregions[i]
+            flat_aregion = list(aregion.flat)
+            flat_stego_region = append(flat_stego_region, flat_aregion)
+            if flat_stego_region.size >= wm_size:
                 break
+        watermark_ch = flat_stego_region[0:wm_size].reshape(wm_shape)
+        return watermark_ch * 255 / self.ch_scale
 
-    def _extract_from_aregions(self, aregions, wm_size):
+    def _extract_from_aregions2(self, aregions, wm_shape):
         i, j = 0, 0
-        imax, jmax = wm_size
-        watermark_ch = zeros(wm_size)
+        imax, jmax = wm_shape
+        watermark_ch = zeros(wm_shape)
 
         for arect in aregions.rects:
             x0, y0, x1, y1 = arect
@@ -189,7 +200,6 @@ def main(argv):
     qtar.get_wm().save('images\stages\\5-watermark.bmp')
 
     qtar.extract(qtar.get_stego_image(), key_data).save('images\stages\\7-extracted_watermark.bmp')
-    #qtar.get_qt_image().show()
 
 
 if __name__ == "__main__":
