@@ -11,7 +11,7 @@ from AdaptiveRegions import *
 
 class QtarStego:
     def __init__(self,
-                 homogeneity_threshold=0.4,
+                 homogeneity_threshold=(0.4),
                  min_block_size=8,
                  max_block_size=512,
                  quant_power=0.2,
@@ -185,7 +185,7 @@ class QtarStego:
 def main(argv):
     img = Image.open("images\Lenna.png")
     watermark = Image.open("images\Garold.jpg")
-    qtar = QtarStego()
+    qtar = QtarStego(homogeneity_threshold=(0.6, 0.4, 0.2))
     key_data = qtar.embed(img, watermark)
     qtar.get_container_image().save('images\stages\\1-container.bmp')
     qtar.get_qt_image().save('images\stages\\2-quad_tree.bmp')

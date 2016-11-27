@@ -71,5 +71,16 @@ class ImageQT(MatrixRegions):
         max_value = np.amax(region)
         min_value = np.amin(region)
         homogeneity = max_value - min_value
-        return homogeneity < self.threshold * 256
+        if type(self.threshold) == float:
+            return homogeneity < self.threshold * 256
+        if isinstance(self.threshold, (tuple, list)):
+            brightness = np.average(region)
+            bright_types_count = len(self.threshold)
+            for i in range(0, bright_types_count-1):
+                bright_type_max = (int(255 / bright_types_count * (i + 1)))
+                if brightness <= bright_type_max:
+                    return homogeneity < self.threshold[i] * 256
+            return homogeneity < self.threshold[-1] * 256
+
+
 
