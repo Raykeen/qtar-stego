@@ -21,20 +21,20 @@ class MatrixRegions(object):
 
     def get_region(self, region):
         x0, y0, x1, y1 = region
-        return self.matrix[x0:x1, y0:y1]
+        return self.matrix[y0:y1, x0:x1]
 
     def get_matrix_with_borders(self, value=255, only_right_bottom=False):
         matrix = np.copy(self.matrix)
         for region in self.rects:
             x0, y0, x1, y1 = region
             for x in range(x0, x1 - 1):
-                matrix[x][y1 - 1] = value
+                matrix[y1 - 1][x] = value
                 if not only_right_bottom:
-                    matrix[x][y0] = value
+                    matrix[y0][x] = value
 
             for y in range(y0, y1 - 1):
-                matrix[x1 - 1][y] = value
+                matrix[y][x1 - 1] = value
                 if not only_right_bottom:
-                    matrix[x0][y] = value
+                    matrix[y][x0] = value
 
         return matrix
