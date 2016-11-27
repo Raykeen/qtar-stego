@@ -1,4 +1,5 @@
 import sys
+import argparse
 from PIL import Image
 from PIL import ImageChops
 from numpy import array, zeros, append
@@ -183,9 +184,28 @@ class QtarStego:
 
 
 def main(argv):
-    img = Image.open("images\Lenna.png")
-    watermark = Image.open("images\Garold.jpg")
-    qtar = QtarStego(homogeneity_threshold=(0.6, 0.4, 0.2))
+    print(argv)
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument('container', type=str,
+                           help='container image')
+    argparser.add_argument('watermark', type=str,
+                           help='image to embed into container')
+    argparser.add_argument('-t', metavar='threshold', type=float, nargs='+', default=0.4,
+                           help='homogeneity thresholds for different brightness levels   float[0, 1])')
+    argparser.add_argument('--min', metavar='min_block_size', type=int, default=8,
+                           help='min block size   int[2, max_block_size], square of 2')
+    argparser.add_argument('--max', metavar='max_block_size', type=int, default=512,
+                           help='max block size   int[min_block_size, image_size], square of 2')
+    argparser.add_argument('-q', metavar='quant_power', type=float, default=0.2,
+                           help='quantization power   float(0, 1]')
+    argparser.add_argument('-s', metavar='ch_scale', type=float, default=4.37,
+                           help='scale to ch_scale watermark pixels values before embedding   float(0, 255]')
+    argparser.add_argument('-o', metavar='offset', type=int, nargs=2, default=None,
+                           help='offset container image     2 x int[0, image_size]')
+    args = argparser.parse_args()
+    img = Image.open(argv[1])
+    watermark = Image.open(argv[2])
+    qtar = QtarStego(args.t, args.min, args.max, args.q, args.s, args.o)
     key_data = qtar.embed(img, watermark)
     qtar.get_container_image().save('images\stages\\1-container.bmp')
     qtar.get_qt_image().save('images\stages\\2-quad_tree.bmp')
