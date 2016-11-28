@@ -8,7 +8,7 @@ from scipy.fftpack import dct, idct
 from itertools import islice
 from ImageQT import *
 from AdaptiveRegions import *
-from metrics import psnr
+from metrics import psnr, bcr
 
 
 class QtarStego:
@@ -224,7 +224,9 @@ def main(argv):
     extracted_wm = qtar.extract(stego_image, key_data)
     extracted_wm.save('images\stages\\7-extracted_watermark.bmp')
     print("container PSNR: {}".format(psnr(img, stego_image)))
+    print("container BCR: {}".format(bcr(img, stego_image)))
     print("watermark PSNR: {}".format(psnr(wm, extracted_wm)))
+    print("watermark BCR:  {}".format(bcr(wm, extracted_wm)))
 
 
 if __name__ == "__main__":

@@ -23,3 +23,22 @@ def psnr(array1, array2, max=255):
     else:
         PSNR = 20 * log10(float(max) / float(MSE))
         return(PSNR)
+
+
+def bcr(array1, array2):
+    flat_arr1 = np.array(array1).flatten()
+    flat_arr2 = np.array(array2).flatten()
+    len1 = len(flat_arr1)
+    len2 = len(flat_arr2)
+
+    if len1 != len2:
+        raise Exception('Arrays must have the same size')
+
+    errors = 0
+
+    for i in range(len1):
+        errors += bin(int(flat_arr1[i]) ^ int(flat_arr2[i])).count("1")
+
+    bcr = 1 - (errors / (8 * len1))
+    return bcr
+
