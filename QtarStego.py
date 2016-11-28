@@ -1,5 +1,6 @@
 import sys
 import argparse
+import warnings
 from PIL import Image
 from PIL import ImageChops
 from numpy import array, zeros, append
@@ -103,6 +104,8 @@ class QtarStego:
             stego_region = flat_stego_region.reshape(shape)
             aregions[i] = stego_region / 255 * self.ch_scale
             if stop: return
+        if not stop:
+            warnings.warn("Container capacity is not enough for embedding given secret image. Extracted secret image will be not complete.")
 
     def _extract_from_aregions(self, aregions, wm_shape):
         flat_stego_region = array([])
@@ -237,11 +240,8 @@ def main(argv):
 
     extracted_wm = qtar.extract(stego_image, key_data)
     extracted_wm.save('images\stages\\7-extracted_watermark.bmp')
-    print("container available BPP: {}".format(qtar.get_bpp()))
-    print("container PSNR: {}".format(psnr(container_image, stego_image)))
-    print("container BCR: {}".format(bcr(container_image, stego_image)))
-    print("watermark PSNR: {}".format(psnr(wm, extracted_wm)))
-    print("watermark BCR:  {}".format(bcr(wm, extracted_wm)))
+    print("Threshold: {0}, {1}x{1} - {2}x{2}\n{3:.2f}bpp, PSNR: {4:.2f}, BCR: {5:.2f}"
+          .format(args.t, args.min, args.max, qtar.get_bpp(), psnr(container_image, stego_image), bcr(wm, extracted_wm)))
 
 
 if __name__ == "__main__":
