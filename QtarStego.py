@@ -13,7 +13,7 @@ from metrics import psnr
 
 class QtarStego:
     def __init__(self,
-                 homogeneity_threshold=(0.4),
+                 homogeneity_threshold=0.4,
                  min_block_size=8,
                  max_block_size=512,
                  quant_power=0.2,
@@ -115,6 +115,8 @@ class QtarStego:
             flat_stego_region = append(flat_stego_region, flat_aregion)
             if flat_stego_region.size >= wm_size:
                 break
+        if flat_stego_region.size <= wm_size:
+            flat_stego_region = append(flat_stego_region, zeros(wm_size-flat_stego_region.size))
         watermark_ch = flat_stego_region[0:wm_size].reshape(wm_shape)
         return watermark_ch * 255 / self.ch_scale
 
@@ -190,7 +192,7 @@ def main(argv):
                            help='container image')
     argparser.add_argument('watermark', type=str,
                            help='image to embed into container')
-    argparser.add_argument('-t', metavar='threshold', type=float, nargs='+', default=0.4,
+    argparser.add_argument('-t', metavar='threshold', type=float, nargs='+', default=1,
                            help='homogeneity thresholds for different brightness levels   float[0, 1])')
     argparser.add_argument('--min', metavar='min_block_size', type=int, default=8,
                            help='min block size   int[2, max_block_size], square of 2')
