@@ -19,9 +19,16 @@ class MatrixRegions(object):
             for x, j in zip(range(x0, x1), range(0, w)):
                 self.matrix[y][x] = value[i][j]
 
-    def get_region(self, region):
-        x0, y0, x1, y1 = region
+    def get_region(self, rect):
+        x0, y0, x1, y1 = rect
         return self.matrix[y0:y1, x0:x1]
+
+    def get_total_size(self):
+        total_size = 0
+        for rect in self.rects:
+            x0, y0, x1, y1 = rect
+            total_size += (x1 - x0) * (y1 - y0)
+        return total_size
 
     def get_matrix_with_borders(self, value=255, only_right_bottom=False):
         matrix = np.copy(self.matrix)

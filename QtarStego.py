@@ -39,9 +39,7 @@ class QtarStego:
         self.image = image
         self.size = int(pow(2, int(log2(min(image.width, image.height)))))
         self.image_chs = self._prepare_image(image, self.size, self.offset)
-        sized_wm = watermark.copy()
-        sized_wm.thumbnail((300,300))
-        self.watermark_chs = self._prepare_image(sized_wm)
+        self.watermark_chs = self._prepare_image(watermark)
         self.key_data['wm_shape'] = self.watermark_chs['r'].shape
         for channel, image_ch in self.image_chs.items():
             self.key_data['aregions'][channel] = self._embed_in_channel(channel, image_ch, self.watermark_chs[channel])
@@ -124,7 +122,7 @@ class QtarStego:
         prepared = image
 
         if size:
-            prepared = prepared.crop((0, 0, size, size))
+            prepared = prepared.resize((size, size))
         if offset:
             x, y = offset
             prepared = ImageChops.offset(prepared, x, y)
@@ -148,6 +146,13 @@ class QtarStego:
             dct_regions[i] = region_dct
             i += 1
         return dct_regions
+
+    def get_bpp(self):
+        total_size = 0
+        for aregions in self.aregions_chs.values():
+            total_size += aregions.get_total_size()
+        bpp = (total_size * 8) / self.size**2
+        return bpp
 
     @staticmethod
     def convert_chs_to_image(matrix_chs, offset=None):
@@ -192,7 +197,7 @@ def main(argv):
                            help='container image')
     argparser.add_argument('watermark', type=str,
                            help='image to embed into container')
-    argparser.add_argument('-t', metavar='threshold', type=float, nargs='+', default=1,
+    argparser.add_argument('-t', metavar='threshold', type=float, nargs='+', default=0.4,
                            help='homogeneity thresholds for different brightness levels   float[0, 1])')
     argparser.add_argument('--min', metavar='min_block_size', type=int, default=8,
                            help='min block size   int[2, max_block_size], square of 2')
@@ -203,16 +208,25 @@ def main(argv):
     argparser.add_argument('-s', metavar='ch_scale', type=float, default=4.37,
                            help='scale to ch_scale watermark pixels values before embedding   float(0, 255]')
     argparser.add_argument('-o', metavar='offset', type=int, nargs=2, default=None,
-                           help='offset container image     2 x int[0, image_size]')
+                           help='offset container image')
+    argparser.add_argument('--rc', metavar='offset', type=int, nargs=2, default=None,
+                           help='resize container image')
+    argparser.add_argument('--rw', metavar='offset', type=int, nargs=2, default=None,
+                           help='resize watermark')
+
     args = argparser.parse_args()
 
     img = Image.open(args.container)
+    if args.rc:
+        img = img.resize((args.rc[0], args.rc[1]))
     watermark = Image.open(args.watermark)
+    if args.rw:
+        watermark = watermark.resize((args.rw[0], args.rw[1]))
 
     qtar = QtarStego(args.t, args.min, args.max, args.q, args.s, args.o)
     key_data = qtar.embed(img, watermark)
-
-    qtar.get_container_image().save('images\stages\\1-container.bmp')
+    container_image = qtar.get_container_image()
+    container_image.save('images\stages\\1-container.bmp')
     qtar.get_qt_image().save('images\stages\\2-quad_tree.bmp')
     qtar.get_dct_image().save('images\stages\\3-dct.bmp')
     qtar.get_ar_image().save('images\stages\\4-adaptive_regions.bmp')
@@ -223,8 +237,9 @@ def main(argv):
 
     extracted_wm = qtar.extract(stego_image, key_data)
     extracted_wm.save('images\stages\\7-extracted_watermark.bmp')
-    print("container PSNR: {}".format(psnr(img, stego_image)))
-    print("container BCR: {}".format(bcr(img, stego_image)))
+    print("container available BPP: {}".format(qtar.get_bpp()))
+    print("container PSNR: {}".format(psnr(container_image, stego_image)))
+    print("container BCR: {}".format(bcr(container_image, stego_image)))
     print("watermark PSNR: {}".format(psnr(wm, extracted_wm)))
     print("watermark BCR:  {}".format(bcr(wm, extracted_wm)))
 
