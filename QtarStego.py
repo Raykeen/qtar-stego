@@ -4,7 +4,7 @@ import warnings
 from PIL import Image
 from PIL import ImageChops
 from numpy import array, zeros, append
-from math import log2, pow
+from math import log2, pow, sqrt
 from scipy.fftpack import dct, idct
 from itertools import islice
 from ImageQT import *
@@ -27,7 +27,9 @@ class QtarStego:
         self.ch_scale = ch_scale
         self.offset = offset
         self.image = Image.new("RGB", (512, 512), "white")
+        self.watermark = Image.new("RGB", (512, 512), "white")
         self.size = 512
+        self.wm_size = (512, 512)
         self.key_data = {'wm_shape': None, 'aregions': {'r': [], 'g': [], 'b': []}}
         self.image_chs = {'r': [], 'g': [], 'b': []}
         self.qt_regions_chs = {'r': [], 'g': [], 'b': []}
@@ -36,14 +38,28 @@ class QtarStego:
         self.aregions_chs = {'r': [], 'g': [], 'b': []}
         self.watermark_chs = {'r': [], 'g': [], 'b': []}
 
-    def embed(self, image, watermark=None):
+    def embed(self, image, watermark=None, resize_to_fit=True):
         self.image = image
+        self.watermark = watermark
         self.size = int(pow(2, int(log2(min(image.width, image.height)))))
         self.image_chs = self._prepare_image(image, self.size, self.offset)
-        self.watermark_chs = self._prepare_image(watermark)
-        self.key_data['wm_shape'] = self.watermark_chs['r'].shape
+
         for channel, image_ch in self.image_chs.items():
-            self.key_data['aregions'][channel] = self._embed_in_channel(channel, image_ch, self.watermark_chs[channel])
+            self._find_regions_in_channel(channel, image_ch)
+            self.key_data['aregions'][channel] = self.aregions_chs[channel]
+
+        available_space = self.get_available_space()
+        if resize_to_fit:
+            new_wm_size = int(sqrt(available_space))
+            self.watermark_chs = self._prepare_image(watermark, new_wm_size)
+            self.wm_size = (new_wm_size, new_wm_size)
+        else:
+            self.watermark_chs = self._prepare_image(watermark)
+            self.wm_size = watermark.size
+        self.key_data['wm_shape'] = self.watermark_chs['r'].shape
+
+        for channel, image_ch in self.image_chs.items():
+            self._embed_in_channel(channel, self.watermark_chs[channel])
 
         return self.key_data
 
@@ -56,22 +72,24 @@ class QtarStego:
 
         return self.get_wm()
 
-    def _embed_in_channel(self, channel, image_ch, watermark_ch=None):
+    def _find_regions_in_channel(self, channel, image_ch):
         qt_regions = ImageQT(image_ch,
                              self.min_block_size,
                              min(self.max_block_size, self.size),
                              self.homogeneity_threshold)
         dct_regions = self._dct_2d(qt_regions)
         adaptive_regions = AdaptiveRegions(dct_regions, self.quant_power)
-        self._embed_in_aregions(adaptive_regions.regions, watermark_ch)
-        stego_img = self._dct_2d(dct_regions, True)
 
         self.qt_regions_chs[channel] = qt_regions
         self.dct_regions_chs[channel] = dct_regions
-        self.aregions_chs[channel] = adaptive_regions.regions
-        self.stego_img_chs[channel] = stego_img.matrix
+        self.aregions_chs[channel] = adaptive_regions
 
-        return adaptive_regions
+    def _embed_in_channel(self, channel, watermark_ch=None):
+        aregions = self.aregions_chs[channel].regions
+        dct_regions = self.dct_regions_chs[channel]
+        self._embed_in_aregions(aregions, watermark_ch)
+        stego_img = self._dct_2d(dct_regions, True)
+        self.stego_img_chs[channel] = stego_img.matrix
 
     def _extract_from_channel(self, channel, stego_image_ch, key_data):
         aregions = key_data['aregions'][channel]
@@ -125,7 +143,7 @@ class QtarStego:
         prepared = image
 
         if size:
-            prepared = prepared.resize((size, size))
+            prepared = prepared.resize((size, size), Image.BILINEAR)
         if offset:
             x, y = offset
             prepared = ImageChops.offset(prepared, x, y)
@@ -150,12 +168,22 @@ class QtarStego:
             i += 1
         return dct_regions
 
-    def get_bpp(self):
+    def get_available_space(self):
+        space_availible = []
+        for aregions_ch in self.aregions_chs.values():
+            space_availible.append(aregions_ch.regions.get_total_size())
+        return min(space_availible)
+
+    def get_available_bpp(self):
         total_size = 0
         for aregions in self.aregions_chs.values():
             total_size += aregions.get_total_size()
         bpp = (total_size * 8) / self.size**2
         return bpp
+
+    def get_fact_bpp(self):
+        wm_w, wm_h = self.wm_size
+        return (24*wm_w * wm_h) / self.size**2
 
     @staticmethod
     def convert_chs_to_image(matrix_chs, offset=None):
@@ -183,7 +211,7 @@ class QtarStego:
 
     def get_ar_image(self):
         max_dct_value = max([dct_regions.matrix.max() for dct_regions in self.dct_regions_chs.values()])
-        matrix_chs = {channel: aregions.get_matrix_with_borders(value=max_dct_value)
+        matrix_chs = {channel: aregions.regions.get_matrix_with_borders(value=max_dct_value)
                       for channel, aregions in self.aregions_chs.items()}
         return self.convert_chs_to_image(matrix_chs, self.offset)
 
@@ -221,10 +249,13 @@ def main(argv):
 
     img = Image.open(args.container)
     if args.rc:
-        img = img.resize((args.rc[0], args.rc[1]))
+        img = img.resize((args.rc[0], args.rc[1]), Image.BILINEAR)
     watermark = Image.open(args.watermark)
     if args.rw:
-        watermark = watermark.resize((args.rw[0], args.rw[1]))
+        watermark = watermark.resize((args.rw[0], args.rw[1]), Image.BILINEAR)
+
+    print("{0} in {1}".format(args.watermark, args.container))
+    print("Threshold: {0}, {1}x{1} - {2}x{2}".format(args.t, args.min, args.max))
 
     qtar = QtarStego(args.t, args.min, args.max, args.q, args.s, args.o)
     key_data = qtar.embed(img, watermark)
@@ -240,8 +271,10 @@ def main(argv):
 
     extracted_wm = qtar.extract(stego_image, key_data)
     extracted_wm.save('images\stages\\7-extracted_watermark.bmp')
-    print("Threshold: {0}, {1}x{1} - {2}x{2}\n{3:.2f}bpp, PSNR: {4:.2f}, BCR: {5:.2f}"
-          .format(args.t, args.min, args.max, qtar.get_bpp(), psnr(container_image, stego_image), bcr(wm, extracted_wm)))
+    print("{0:.2f}bpp/{1:.2f}bpp, PSNR: {2:.2f}dB, BCR: {3:.2f}, wmsize: {4}x{5}"
+          .format(qtar.get_fact_bpp(), qtar.get_available_bpp(),
+                  psnr(container_image, stego_image),
+                  bcr(wm, extracted_wm), wm.size[0], wm.size[1]))
 
 
 if __name__ == "__main__":
