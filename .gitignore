@@ -1,4 +1,5 @@
 images/
 .idea/
 env/
+logs/
 __pycache__/

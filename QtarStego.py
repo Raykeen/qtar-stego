@@ -1,5 +1,3 @@
-import sys
-import argparse
 import warnings
 from PIL import Image
 from PIL import ImageChops
@@ -9,17 +7,24 @@ from scipy.fftpack import dct, idct
 from itertools import islice
 from ImageQT import *
 from AdaptiveRegions import *
-from metrics import psnr, bcr
 
+DEFAULT_PARAMS = {
+    'homogeneity_threshold': 0.4,
+    'min_block_size': 8,
+    'max_block_size': 512,
+    'quant_power': 1,
+    'ch_scale': 4.37,
+    'offset': None
+}
 
 class QtarStego:
     def __init__(self,
-                 homogeneity_threshold=0.4,
-                 min_block_size=8,
-                 max_block_size=512,
-                 quant_power=0.2,
-                 ch_scale=4.37,
-                 offset=None):
+                 homogeneity_threshold=DEFAULT_PARAMS['homogeneity_threshold'],
+                 min_block_size=DEFAULT_PARAMS['min_block_size'],
+                 max_block_size=DEFAULT_PARAMS['max_block_size'],
+                 quant_power=DEFAULT_PARAMS['quant_power'],
+                 ch_scale=DEFAULT_PARAMS['ch_scale'],
+                 offset=DEFAULT_PARAMS['offset']):
         self.homogeneity_threshold = homogeneity_threshold
         self.min_block_size = min_block_size
         self.max_block_size = max_block_size
@@ -123,6 +128,10 @@ class QtarStego:
             aregions[i] = stego_region / 255 * self.ch_scale
             if stop: return
         if not stop:
+            try:
+                next(wm_iter)
+            except StopIteration:
+                return
             warnings.warn("Container capacity is not enough for embedding given secret image. Extracted secret image will be not complete.")
 
     def _extract_from_aregions(self, aregions, wm_shape):
@@ -221,61 +230,11 @@ class QtarStego:
     def get_wm(self):
         return self.convert_chs_to_image(self.watermark_chs)
 
-
-def main(argv):
-    argparser = argparse.ArgumentParser()
-    argparser.add_argument('container', type=str,
-                           help='container image')
-    argparser.add_argument('watermark', type=str,
-                           help='image to embed into container')
-    argparser.add_argument('-t', metavar='threshold', type=float, nargs='+', default=0.4,
-                           help='homogeneity thresholds for different brightness levels   float[0, 1])')
-    argparser.add_argument('--min', metavar='min_block_size', type=int, default=8,
-                           help='min block size   int[2, max_block_size], square of 2')
-    argparser.add_argument('--max', metavar='max_block_size', type=int, default=512,
-                           help='max block size   int[min_block_size, image_size], square of 2')
-    argparser.add_argument('-q', metavar='quant_power', type=float, default=0.2,
-                           help='quantization power   float(0, 1]')
-    argparser.add_argument('-s', metavar='ch_scale', type=float, default=4.37,
-                           help='scale to ch_scale watermark pixels values before embedding   float(0, 255]')
-    argparser.add_argument('-o', metavar='offset', type=int, nargs=2, default=None,
-                           help='offset container image')
-    argparser.add_argument('--rc', metavar='offset', type=int, nargs=2, default=None,
-                           help='resize container image')
-    argparser.add_argument('--rw', metavar='offset', type=int, nargs=2, default=None,
-                           help='resize watermark')
-
-    args = argparser.parse_args()
-
-    img = Image.open(args.container)
-    if args.rc:
-        img = img.resize((args.rc[0], args.rc[1]), Image.BILINEAR)
-    watermark = Image.open(args.watermark)
-    if args.rw:
-        watermark = watermark.resize((args.rw[0], args.rw[1]), Image.BILINEAR)
-
-    print("{0} in {1}".format(args.watermark, args.container))
-    print("Threshold: {0}, {1}x{1} - {2}x{2}".format(args.t, args.min, args.max))
-
-    qtar = QtarStego(args.t, args.min, args.max, args.q, args.s, args.o)
-    key_data = qtar.embed(img, watermark)
-    container_image = qtar.get_container_image()
-    container_image.save('images\stages\\1-container.bmp')
-    qtar.get_qt_image().save('images\stages\\2-quad_tree.bmp')
-    qtar.get_dct_image().save('images\stages\\3-dct.bmp')
-    qtar.get_ar_image().save('images\stages\\4-adaptive_regions.bmp')
-    stego_image = qtar.get_stego_image()
-    stego_image.save('images\stages\\6-stego_image.bmp')
-    wm = qtar.get_wm()
-    wm.save('images\stages\\5-watermark.bmp')
-
-    extracted_wm = qtar.extract(stego_image, key_data)
-    extracted_wm.save('images\stages\\7-extracted_watermark.bmp')
-    print("{0:.2f}bpp/{1:.2f}bpp, PSNR: {2:.2f}dB, BCR: {3:.2f}, wmsize: {4}x{5}"
-          .format(qtar.get_fact_bpp(), qtar.get_available_bpp(),
-                  psnr(container_image, stego_image),
-                  bcr(wm, extracted_wm), wm.size[0], wm.size[1]))
-
-
-if __name__ == "__main__":
-    main(sys.argv)
+    @staticmethod
+    def from_dict(params):
+        return QtarStego(params['homogeneity_threshold'],
+                         params['min_block_size'],
+                         params['max_block_size'],
+                         params['quant_power'],
+                         params['ch_scale'],
+                         params['offset'])
