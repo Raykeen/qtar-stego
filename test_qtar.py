@@ -11,6 +11,7 @@ def main(argv):
                            help='container image')
     argparser.add_argument('watermark', type=str,
                            help='image to embed into container')
+    argparser.add_argument('-ns', '--not-save', action='store_true')
     argparser.add_argument('-t', '--homogeneity_threshold', metavar='threshold',
                            type=float, nargs='+', default=DEFAULT_PARAMS['homogeneity_threshold'],
                            help='homogeneity thresholds for different brightness levels   float[0, 1])')
@@ -40,7 +41,6 @@ def main(argv):
     test_qtar(params)
 
 
-
 def test_qtar(params):
     img = Image.open(params['container'])
     if params['container_size']:
@@ -62,17 +62,22 @@ def test_qtar(params):
 
     key_data = qtar.embed(img, watermark)
     container_image = qtar.get_container_image()
-    container_image.save('images\stages\\1-container.bmp')
-    qtar.get_qt_image().save('images\stages\\2-quad_tree.bmp')
-    qtar.get_dct_image().save('images\stages\\3-dct.bmp')
-    qtar.get_ar_image().save('images\stages\\4-adaptive_regions.bmp')
     stego_image = qtar.get_stego_image()
-    stego_image.save('images\stages\\6-stego_image.bmp')
     wm = qtar.get_wm()
-    wm.save('images\stages\\5-watermark.bmp')
+
+    if not params['not_save']:
+        container_image.save('images\stages\\1-container.bmp')
+        qtar.get_qt_image().save('images\stages\\2-quad_tree.bmp')
+        qtar.get_dct_image().save('images\stages\\3-dct.bmp')
+        qtar.get_ar_image().save('images\stages\\4-adaptive_regions.bmp')
+        stego_image.save('images\stages\\6-stego_image.bmp')
+        wm.save('images\stages\\5-watermark.bmp')
 
     extracted_wm = qtar.extract(stego_image, key_data)
-    extracted_wm.save('images\stages\\7-extracted_watermark.bmp')
+
+    if not params['not_save']:
+        extracted_wm.save('images\stages\\7-extracted_watermark.bmp')
+
     print("{0:.2f}bpp/{1:.2f}bpp, PSNR: {2:.2f}dB, BCR: {3:.2f}, wmsize: {4}x{5}"
           .format(qtar.get_fact_bpp(), qtar.get_available_bpp(),
                   psnr(container_image, stego_image),
