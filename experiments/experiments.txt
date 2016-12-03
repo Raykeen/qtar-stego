@@ -1,0 +1,3 @@
+Lenna.png Garold.jpg
+Tiger.jpg Flower.jpg
+F15.bmp Flower.jpg
