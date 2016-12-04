@@ -1,5 +1,6 @@
 import argparse
 from scipy.optimize import differential_evolution
+from numpy import array
 from QtarStego import QtarStego, DEFAULT_PARAMS
 from test_qtar import test_qtar
 from metrics import bcr, psnr
@@ -57,7 +58,7 @@ class OptIssue3:
 
     @staticmethod
     def func(offset, container, watermark):
-        qtar = QtarStego(offset=offset)
+        qtar = QtarStego(offset=array(offset).astype(int))
 
         qtar.embed(container, watermark)
         container_image = qtar.get_container_image()
@@ -79,7 +80,7 @@ class OptIssue4:
 
     @staticmethod
     def func(offset, container, watermark):
-        qtar = QtarStego(offset=offset)
+        qtar = QtarStego(offset=array(offset).astype(int))
 
         key_data = qtar.embed(container, watermark)
         stego_image = qtar.get_stego_image()
@@ -92,7 +93,7 @@ class OptIssue4:
         print('Offset: {0}, BCR: {1}, Iter: {2}'.format(result.x, -result.fun, result.nit))
 
         params = DEFAULT_PARAMS.copy()
-        params['offest'] = result.x
+        params['offset'] = result.x
         return params
 
 
@@ -181,7 +182,7 @@ def main():
         for Issue in ISSUES:
             run_de(args.container, args.watermark, args.np, args.cr, args.f, Issue)
     else:
-        run_de(args.container, args.watermark, args.np, args.cr, args.f, ISSUES[args.issue])
+        run_de(args.container, args.watermark, args.np, args.cr, args.f, ISSUES[args.issue-1])
 
 
 def run_de(container_path, watermark_path, np, cr, f, Issue):

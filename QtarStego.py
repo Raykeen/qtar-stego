@@ -151,9 +151,9 @@ class QtarStego:
     def _prepare_image(self, image, size=None, offset=None):
         prepared = image
 
-        if size:
+        if size is not None:
             prepared = prepared.resize((size, size), Image.BILINEAR)
-        if offset:
+        if offset is not None:
             x, y = offset
             prepared = ImageChops.offset(prepared, x, y)
 
@@ -199,7 +199,7 @@ class QtarStego:
         image_chs = {channel: Image.fromarray(image_ch).convert('L')
                      for channel, image_ch in matrix_chs.items()}
         result_image = Image.merge("RGB", (image_chs['r'], image_chs['g'], image_chs['b']))
-        if offset:
+        if offset is not None:
             x, y = offset
             result_image = ImageChops.offset(result_image, -x, -y)
 
