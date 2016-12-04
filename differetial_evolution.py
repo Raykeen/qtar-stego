@@ -67,10 +67,10 @@ class OptIssue3:
 
     @staticmethod
     def get_new_params(result):
-        print('Offset: {0}, PSNR: {1}, Iter: {2}'.format(result.x, -result.fun, result.nit))
+        print('Offset: {0}, PSNR: {1}, Iter: {2}'.format(array(result.x).astype(int), -result.fun, result.nit))
 
         params = DEFAULT_PARAMS.copy()
-        params['offset'] = result.x
+        params['offset'] = array(result.x).astype(int)
         return params
 
 
@@ -90,10 +90,10 @@ class OptIssue4:
 
     @staticmethod
     def get_new_params(result):
-        print('Offset: {0}, BCR: {1}, Iter: {2}'.format(result.x, -result.fun, result.nit))
+        print('Offset: {0}, BCR: {1}, Iter: {2}'.format(array(result.x).astype(int), -result.fun, result.nit))
 
         params = DEFAULT_PARAMS.copy()
-        params['offset'] = result.x
+        params['offset'] = array(result.x).astype(int)
         return params
 
 
@@ -189,6 +189,8 @@ def run_de(container_path, watermark_path, np, cr, f, Issue):
     container = Image.open(container_path).resize((512, 512))
     watermark = Image.open(watermark_path)
     print("DE OPTIMISATION:")
+    print(Issue.desc)
+    print("DE PARAMS:")
     print('NP: {0}, CR: {1}, F: {2}'.format(np, cr, f))
 
     de_result = differential_evolution(Issue.func, Issue.bounds, (container, watermark),
@@ -202,8 +204,8 @@ def run_de(container_path, watermark_path, np, cr, f, Issue):
     params['watermark'] = watermark_path
     params['watermark_size'] = None
     params['not_save'] = True
+    print("TEST:")
     test_qtar(params)
-    print("_"*40+'\n')
 
 if __name__ == "__main__":
     main()

@@ -82,6 +82,7 @@ def test_qtar(params):
           .format(qtar.get_fact_bpp(), qtar.get_available_bpp(),
                   psnr(container_image, stego_image),
                   bcr(wm, extracted_wm), wm.size[0], wm.size[1]))
+    print("_"*40+'\n')
 
 if __name__ == "__main__":
     main(sys.argv)
