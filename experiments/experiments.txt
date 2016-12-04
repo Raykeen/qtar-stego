@@ -1,3 +1,12 @@
-Lenna.png Garold.jpg
-Tiger.jpg Flower.jpg
-F15.bmp Flower.jpg
+Lenna.png Garold.png
+Tiger.png Flower.png
+F15.png Flower.png
+cameraman_g.png clouds_g.png
+clouds_g.png jetplane_g.png
+jetplane_g.png lake_g.png
+lake_g.png livingroom_g.png
+livingroom_g.png mandril_g.png
+mandril_g.png peppers_g.png
+peppers_g.png pirate_g.png
+pirate_g.png walkbridge_g.png
+walkbridge_g.png cameraman_g.png
