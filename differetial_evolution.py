@@ -8,7 +8,7 @@ from PIL import Image
 
 
 class OptIssue1:
-    desc = 'Func: PSNR Params: Threshold for 3 brightness levels'
+    desc = 'Issue 1\nFunc: PSNR\nParams: Threshold for 3 brightness levels'
     bounds = ((0, 1), (0, 1), (0, 1))
 
     @staticmethod
@@ -22,7 +22,8 @@ class OptIssue1:
 
     @staticmethod
     def get_new_params(result):
-        print('Threshold: {0}, PSNR: {1}, Iter: {2}'.format(result.x, -result.fun, result.nit))
+        print('Threshold: {0:.2f} {1:.2f} {2:.2f},\nPSNR: {3:.2f},\nIter: {4}'
+              .format(result.x[0], result.x[1], result.x[2], -result.fun, result.nit))
 
         params = DEFAULT_PARAMS.copy()
         params['homogeneity_threshold'] = result.x
@@ -30,7 +31,7 @@ class OptIssue1:
 
 
 class OptIssue2:
-    desc = 'Func: BCR Params: Threshold for 3 brightness levels'
+    desc = 'Issue 2\nFunc: BCR\nParams: Threshold for 3 brightness levels'
     bounds = ((0, 1), (0, 1), (0, 1))
 
     @staticmethod
@@ -45,7 +46,8 @@ class OptIssue2:
 
     @staticmethod
     def get_new_params(result):
-        print('Threshold: {0}, BCR: {1}, Iter: {2}'.format(result.x, -result.fun, result.nit))
+        print('Threshold: {0:.2f} {1:.2f} {2:.2f},\nBCR: {3:.2f},\nIter: {4}'
+              .format(result.x[0], result.x[1], result.x[2], -result.fun, result.nit))
 
         params = DEFAULT_PARAMS.copy()
         params['homogeneity_threshold'] = result.x
@@ -53,7 +55,7 @@ class OptIssue2:
 
 
 class OptIssue3:
-    desc = 'Func: PSNR Params: Offset'
+    desc = 'Issue 3\nFunc: PSNR\nParams: Offset'
     bounds = ((0, 511), (0, 511))
 
     @staticmethod
@@ -67,7 +69,7 @@ class OptIssue3:
 
     @staticmethod
     def get_new_params(result):
-        print('Offset: {0}, PSNR: {1}, Iter: {2}'.format(array(result.x).astype(int), -result.fun, result.nit))
+        print('Offset: {0}, PSNR: {1:.2f}, Iter: {2}'.format(array(result.x).astype(int), -result.fun, result.nit))
 
         params = DEFAULT_PARAMS.copy()
         params['offset'] = array(result.x).astype(int)
@@ -75,7 +77,7 @@ class OptIssue3:
 
 
 class OptIssue4:
-    desc = 'Func: BCR Params: Offset'
+    desc = 'Issue 4\nFunc: BCR\nParams: Offset'
     bounds = ((0, 511), (0, 511))
 
     @staticmethod
@@ -90,7 +92,7 @@ class OptIssue4:
 
     @staticmethod
     def get_new_params(result):
-        print('Offset: {0}, BCR: {1}, Iter: {2}'.format(array(result.x).astype(int), -result.fun, result.nit))
+        print('Offset: {0}, BCR: {1:.2f}, Iter: {2}'.format(array(result.x).astype(int), -result.fun, result.nit))
 
         params = DEFAULT_PARAMS.copy()
         params['offset'] = array(result.x).astype(int)
@@ -98,8 +100,8 @@ class OptIssue4:
 
 
 class OptIssue5:
-    desc = 'Func: PSNR Params: max bock size, quant power, channel scale'
-    bounds = ((3, 9), (0.01, 1), (1,  255))
+    desc = 'Issue 5\nFunc: PSNR\nParams: max bock size, quant power, channel scale'
+    bounds = ((3, 10), (0.01, 1), (1,  255))
 
     @staticmethod
     def func(args, container, watermark):
@@ -115,19 +117,19 @@ class OptIssue5:
 
     @staticmethod
     def get_new_params(result):
-        print('Max block size: {0}, Quant power: {1}, Channel scale: {2}, PSNR: {3}, Iter: {4}'
-              .format(result.x[0], result.x[1], result.x[2], -result.fun, result.nit))
+        print('Max block size: {0}, Quant power: {1:.2f}, Channel scale: {2:.2f}, PSNR: {3:.2f}, Iter: {4}'
+              .format(2**int(result.x[0]), result.x[1], result.x[2], -result.fun, result.nit))
 
         params = DEFAULT_PARAMS.copy()
-        params['max_block_size'] = result.x[0]
+        params['max_block_size'] = 2**int(result.x[0])
         params['quant_power'] = result.x[1]
         params['ch_scale'] = result.x[2]
         return params
 
 
 class OptIssue6:
-    desc = 'Func: BCR Params: max bock size, quant power, channel scale'
-    bounds = ((3, 9), (0.01, 1), (1,  255))
+    desc = 'Issue 6\nFunc: BCR\nParams: max bock size, quant power, channel scale'
+    bounds = ((3, 10), (0.01, 1), (1,  255))
 
     @staticmethod
     def func(args, container, watermark):
@@ -144,11 +146,11 @@ class OptIssue6:
 
     @staticmethod
     def get_new_params(result):
-        print('Max block size: {0}, Quant power: {1}, Channel scale: {2}, PSNR: {3}, Iter: {4}'
-              .format(result.x[0], result.x[1], result.x[2], -result.fun, result.nit))
+        print('Max block size: {0}, Quant power: {1:.2f}, Channel scale: {2:.2f}, BCR: {3:.2f}, Iter: {4}'
+              .format(2**int(result.x[0]), result.x[1], result.x[2], -result.fun, result.nit))
 
         params = DEFAULT_PARAMS.copy()
-        params['max_block_size'] = result.x[0]
+        params['max_block_size'] = 2**int(result.x[0])
         params['quant_power'] = result.x[1]
         params['ch_scale'] = result.x[2]
         return params

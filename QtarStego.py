@@ -181,14 +181,12 @@ class QtarStego:
     def _dct_2d(self, regions, inverse=False):
         result_mx = zeros((self.size, self.size))
         dct_regions = MatrixRegions(regions.rects, result_mx)
-        i = 0
-        for region in regions:
+        for i, region in enumerate(regions):
             if inverse:
                 region_dct = idct(idct(region.T, norm='ortho').T, norm='ortho')
             else:
                 region_dct = dct(dct(region, norm='ortho').T, norm='ortho').T
             dct_regions[i] = region_dct
-            i += 1
         return dct_regions
 
     def get_available_space(self):
@@ -243,7 +241,7 @@ class QtarStego:
         return self.convert_chs_to_image(self.stego_img_chs, self.image.mode, self.offset)
 
     def get_wm(self):
-        return self.convert_chs_to_image(self.watermark_chs, self.watermark.mode)
+        return self.convert_chs_to_image(self.watermark_chs, self.image.mode)
 
     @staticmethod
     def from_dict(params):

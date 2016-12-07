@@ -16,13 +16,13 @@ def psnr(array1, array2, max=255):
     for i in range(len1):
         MSE += (int(flat_arr1[i]) - int(flat_arr2[i])) ** 2
 
-    MSE = sqrt(float(MSE) / float(len1))
+    MSE = float(MSE) / float(len1)
 
     if MSE == 0:
         return float('inf')
     else:
-        PSNR = 20 * log10(float(max) / float(MSE))
-        return(PSNR)
+        PSNR = 20 * log10(float(max) / sqrt(MSE))
+        return PSNR
 
 
 def bcr(array1, array2):

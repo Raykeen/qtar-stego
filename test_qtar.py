@@ -50,7 +50,7 @@ def test_qtar(params):
         watermark = watermark.resize((params['watermark_size'][0], params['watermark_size'][1]), Image.BILINEAR)
 
     print("{0} in {1}".format(params['watermark'], params['container']))
-    print("Threshold: {0}\nMin - Max block: {1}x{1} - {2}x{2}\nQuantization power: {3}\nScale: {4}\nOffset: {5}\n"
+    print("Threshold: {0}\nMin - Max block: {1}x{1} - {2}x{2}\nQuantization power: {3:.2f}\nScale: {4:.2f}\nOffset: {5}\n"
           .format(params['homogeneity_threshold'],
                   params['min_block_size'],
                   params['max_block_size'],
