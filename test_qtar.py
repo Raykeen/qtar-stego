@@ -78,7 +78,7 @@ def test_qtar(params):
     if not params['not_save']:
         extracted_wm.save('images\stages\\7-extracted_watermark.bmp')
 
-    print("{0:.2f}bpp/{1:.2f}bpp, PSNR: {2:.2f}dB, BCR: {3:.2f}, wmsize: {4}x{5}"
+    print("{0:.2f}bpp/{1:.4f}bpp, PSNR: {2:.4f}dB, BCR: {3:.4f}, wmsize: {4}x{5}"
           .format(qtar.get_fact_bpp(), qtar.get_available_bpp(),
                   psnr(container_image, stego_image),
                   bcr(wm, extracted_wm), wm.size[0], wm.size[1]))

@@ -17,6 +17,7 @@ DEFAULT_PARAMS = {
     'offset': None
 }
 
+
 class QtarStego:
     def __init__(self,
                  homogeneity_threshold=DEFAULT_PARAMS['homogeneity_threshold'],
