@@ -6,7 +6,7 @@ from test_qtar import test_qtar
 from metrics import bcr, psnr
 from math import sqrt
 from PIL import Image
-
+from time import time
 
 class OptIssue1:
     desc = 'Issue 1\nFunc: PSNR\nParams: Threshold for 3 brightness levels'
@@ -363,9 +363,10 @@ def run_de(container_path, watermark_path, Issue):
     watermark = Image.open(watermark_path)
     print("DE OPTIMISATION:")
     print(Issue.desc)
-    print("DE PARAMS:")
+    print("\nDE PARAMS:")
     print('NP: {0}, CR: {1}, F: {2}, Iter: {3}'.format(Issue.np, Issue.cr, Issue.f, Issue.iter))
 
+    de_time = time()
     de_result = differential_evolution(Issue.func, Issue.bounds, (container, watermark),
                                        strategy='rand1bin',
                                        popsize=Issue.np,
@@ -373,15 +374,16 @@ def run_de(container_path, watermark_path, Issue):
                                        recombination=Issue.cr,
                                        tol=0,
                                        maxiter=Issue.iter)
+    print("\noptimized in {0} seconds".format(time() - de_time))
 
-    print("RESULT:")
+    print("\nRESULT:")
     params = Issue.get_new_params(de_result)
     params['container'] = container_path
     params['container_size'] = (512, 512)
     params['watermark'] = watermark_path
     params['watermark_size'] = None
     params['not_save'] = True
-    print("TEST:")
+    print("\nTEST:")
     test_qtar(params)
 
 if __name__ == "__main__":

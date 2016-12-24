@@ -3,6 +3,7 @@ import argparse
 from metrics import psnr, bcr
 from QtarStego import QtarStego, DEFAULT_PARAMS
 from PIL import Image
+from time import time
 
 
 def main(argv):
@@ -60,7 +61,10 @@ def test_qtar(params):
 
     qtar = QtarStego.from_dict(params)
 
+    embed_time = time()
     key_data = qtar.embed(img, watermark)
+    print("embedded in {0:.4f} seconds".format(time() - embed_time))
+
     container_image = qtar.get_container_image()
     stego_image = qtar.get_stego_image()
     wm = qtar.get_wm()
@@ -73,7 +77,9 @@ def test_qtar(params):
         stego_image.save('images\stages\\6-stego_image.bmp')
         wm.save('images\stages\\5-watermark.bmp')
 
+    extract_time = time()
     extracted_wm = qtar.extract(stego_image, key_data)
+    print("extracted in {0:.4f} seconds\n".format(time() - extract_time))
 
     if not params['not_save']:
         extracted_wm.save('images\stages\\7-extracted_watermark.bmp')
