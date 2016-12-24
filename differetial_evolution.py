@@ -188,7 +188,7 @@ class OptIssue6:
 
 
 class OptIssue7:
-    desc = 'Issue 7\nFunc: Universal\nParams: th1, th2, th3 ,min bock size, max bock size, quant power, channel scale'
+    desc = 'Issue 7\nFunc: Universal\nParams: th1, th2, th3, min bock size, max bock size, quant power, channel scale'
     bounds = ((0, 1), (0, 1), (0, 1), (3, 10), (3, 10), (0.01, 1), (1,  255))
 
     np = 12
@@ -259,7 +259,78 @@ class OptIssue7:
         params['ch_scale'] = result.x[6]
         return params
 
-ISSUES = [OptIssue1, OptIssue2, OptIssue3, OptIssue4, OptIssue5, OptIssue6, OptIssue7]
+
+class OptIssue8:
+    desc = 'Issue 8\nFunc: Universal\nParams: th1, th2, th3, ox, oy, quant power, channel scale'
+    bounds = ((0, 1), (0, 1), (0, 1), (0, 511), (0, 511), (0, 1), (1,  255))
+
+    np = 12
+    cr = 0.2368
+    f = 0.6702
+    iter = 166
+
+    @staticmethod
+    def func(args, container, watermark):
+        th = (args[0], args[1], args[2])
+        x = int(args[3])
+        y = int(args[4])
+        qp = args[5]
+        sc = args[6]
+        qtar = QtarStego(homogeneity_threshold=th,
+                         offset=(x, y),
+                         quant_power=qp,
+                         ch_scale=sc)
+
+        MAXBPP = len(container.getbands()) * 8
+        _PSNR = 1
+        _BCR = 0
+        _Cap = 0
+
+        psnr_w = 0.999
+        bcr_w = 0.0005
+        cap_w = 0.0005
+        try:
+            key_data = qtar.embed(container, watermark)
+            container_image = qtar.get_container_image()
+            stego_image = qtar.get_stego_image()
+            watermark = qtar.get_wm()
+            extracted_wm = qtar.extract(stego_image, key_data)
+            _PSNR = psnr(container_image, stego_image)
+            _BCR = bcr(watermark, extracted_wm)
+            _Cap = qtar.get_fact_bpp()
+        except:
+            return 1
+
+        return sqrt(psnr_w * (-1 / _PSNR)**2 + bcr_w * (1 - _BCR)**2 + cap_w * (1 - _Cap / MAXBPP)**2)
+
+    @staticmethod
+    def get_new_params(result):
+        x = int(result.x[3])
+        y = int(result.x[4])
+        print('Threshold: {0:.2f} {1:.2f} {2:.2f}, \n'
+              'Offset: ({3}, {4}) \n'
+              'Quant power: {5:.2f}, \n'
+              'Channel scale: {6:.2f}, \n'
+              'Func: {7:.2f}, Iter: {8}'
+              .format(result.x[0],
+                      result.x[1],
+                      result.x[2],
+                      x,
+                      y,
+                      result.x[5],
+                      result.x[6],
+                      result.fun,
+                      result.nit))
+
+        params = DEFAULT_PARAMS.copy()
+        params['homogeneity_threshold'] = (result.x[0], result.x[1], result.x[2])
+        params['offset'] = (x, y)
+        params['quant_power'] = result.x[5]
+        params['ch_scale'] = result.x[6]
+        return params
+
+
+ISSUES = [OptIssue1, OptIssue2, OptIssue3, OptIssue4, OptIssue5, OptIssue6, OptIssue7, OptIssue8]
 
 
 def main():
@@ -275,7 +346,9 @@ def main():
                                 '3: {}\n'.format(OptIssue3.desc) +
                                 '4: {}\n'.format(OptIssue4.desc) +
                                 '5: {}\n'.format(OptIssue5.desc) +
-                                '6: {}\n'.format(OptIssue6.desc))
+                                '6: {}\n'.format(OptIssue6.desc) +
+                                '7: {}\n'.format(OptIssue7.desc) +
+                                '8: {}\n'.format(OptIssue8.desc))
     args = argparser.parse_args()
 
     if args.issue == 0:
