@@ -1,12 +1,14 @@
 import warnings
+from itertools import islice
+from math import log2, pow, sqrt
+
+from qtar.core.imageqt import *
 from PIL import Image
 from PIL import ImageChops
 from numpy import array, zeros, append
-from math import log2, pow, sqrt
 from scipy.fftpack import dct, idct
-from itertools import islice
-from ImageQT import *
-from AdaptiveRegions import *
+
+from qtar.core.adaptiveregions import *
 
 DEFAULT_PARAMS = {
     'homogeneity_threshold': 0.4,

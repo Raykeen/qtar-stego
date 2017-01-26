@@ -1,12 +1,15 @@
 import argparse
-from scipy.optimize import differential_evolution
-from numpy import array
-from QtarStego import QtarStego, DEFAULT_PARAMS
-from test_qtar import test_qtar
-from metrics import bcr, psnr
 from math import sqrt
-from PIL import Image
 from time import time
+
+from PIL import Image
+from qtar.core.qtar import QtarStego, DEFAULT_PARAMS
+from numpy import array
+from qtar.optimization.metrics import bcr, psnr
+from scipy.optimize import differential_evolution
+
+from qtar.testqtar import test_qtar
+
 
 class OptIssue1:
     desc = 'Issue 1\nFunc: PSNR\nParams: Threshold for 3 brightness levels'

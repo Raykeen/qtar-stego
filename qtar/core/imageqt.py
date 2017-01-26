@@ -1,5 +1,4 @@
-from MatrixRegion import *
-import numpy as np
+from qtar.core.matrixregion import *
 
 
 class QtNode:

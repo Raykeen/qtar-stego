@@ -1,9 +1,11 @@
-import sys
 import argparse
-from metrics import psnr, bcr
-from QtarStego import QtarStego, DEFAULT_PARAMS
-from PIL import Image
+import sys
 from time import time
+
+from PIL import Image
+from qtar.optimization.metrics import psnr, bcr
+
+from qtar.core.qtar import QtarStego, DEFAULT_PARAMS
 
 
 def main(argv):

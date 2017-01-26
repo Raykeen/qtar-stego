@@ -1,6 +1,7 @@
-from QuantizationMatrix import *
-from MatrixRegion import *
+from qtar.core.quantizationmatrix import *
 from numpy import uint8
+
+from qtar.core.matrixregion import *
 
 
 class AdaptiveRegions:
