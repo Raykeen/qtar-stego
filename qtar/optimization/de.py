@@ -21,7 +21,7 @@ class OptIssue1:
     iter = 60
 
     @staticmethod
-    def func(threshold, container, watermark):
+    def func(threshold, container, watermark, other):
         qtar = QtarStego(threshold)
 
         qtar.embed(container, watermark)
@@ -49,7 +49,7 @@ class OptIssue2:
     iter = 60
 
     @staticmethod
-    def func(threshold, container, watermark):
+    def func(threshold, container, watermark, other):
         qtar = QtarStego(threshold)
 
         key_data = qtar.embed(container, watermark)
@@ -78,7 +78,7 @@ class OptIssue3:
     iter = 40
 
     @staticmethod
-    def func(offset, container, watermark):
+    def func(offset, container, watermark, other):
         qtar = QtarStego(offset=array(offset).astype(int))
 
         qtar.embed(container, watermark)
@@ -105,7 +105,7 @@ class OptIssue4:
     iter = 40
 
     @staticmethod
-    def func(offset, container, watermark):
+    def func(offset, container, watermark, other):
         qtar = QtarStego(offset=array(offset).astype(int))
 
         key_data = qtar.embed(container, watermark)
@@ -133,7 +133,7 @@ class OptIssue5:
     iter = 60
 
     @staticmethod
-    def func(args, container, watermark):
+    def func(args, container, watermark, other):
         max_b = 2**int(args[0])
         qp = args[1]
         sc = args[2]
@@ -166,7 +166,7 @@ class OptIssue6:
     iter = 60
 
     @staticmethod
-    def func(args, container, watermark):
+    def func(args, container, watermark, other):
         max_b = 2**int(args[0])
         qp = args[1]
         sc = args[2]
@@ -200,7 +200,7 @@ class OptIssue7:
     iter = 166
 
     @staticmethod
-    def func(args, container, watermark):
+    def func(args, container, watermark, other):
         th = (args[0], args[1], args[2])
         max_b = 2**int(args[3])
         min_b = 2**int(args[4])
@@ -273,7 +273,7 @@ class OptIssue8:
     iter = 166
 
     @staticmethod
-    def func(args, container, watermark):
+    def func(args, container, watermark, other):
         th = (args[0], args[1], args[2])
         x = int(args[3])
         y = int(args[4])
@@ -333,7 +333,62 @@ class OptIssue8:
         return params
 
 
-ISSUES = [OptIssue1, OptIssue2, OptIssue3, OptIssue4, OptIssue5, OptIssue6, OptIssue7, OptIssue8]
+class OptIssue9:
+    desc = 'Issue 9\nFunc: PSNR and BPP\nParams: th1, th2, th3, ox, oy'
+    bounds = ((0, 1), (0, 1), (0, 1), (0, 512), (0, 512))
+
+    np = 12
+    cr = 0.2368
+    f = 0.6702
+    iter = 166
+
+    @staticmethod
+    def func(args, container, watermark, other):
+        def_psnr = other['psnr']
+        def_bpp = other['bpp']
+        th = (args[0], args[1], args[2])
+        x = int(args[3])
+        y = int(args[4])
+        qtar = QtarStego(homogeneity_threshold=th,
+                         offset=(x, y))
+
+        _PSNR = 1
+        _BPP = 0
+        try:
+            qtar.embed(container, watermark)
+            container_image = qtar.get_container_image()
+            stego_image = qtar.get_stego_image()
+            _PSNR = psnr(container_image, stego_image)
+            _BPP = qtar.get_fact_bpp()
+
+            if _PSNR < def_psnr and _BPP < def_bpp:
+                return 0
+
+            return -((_PSNR - def_psnr)/def_psnr + (_BPP - def_bpp)/def_bpp)
+        except:
+            return 0
+
+    @staticmethod
+    def get_new_params(result):
+        x = int(result.x[3])
+        y = int(result.x[4])
+        print('Threshold: {0:.2f} {1:.2f} {2:.2f}, \n'
+              'Offset: ({3}, {4}) \n'
+              'Func: {5:.2f}, Iter: {6}'
+              .format(result.x[0],
+                      result.x[1],
+                      result.x[2],
+                      x,
+                      y,
+                      result.fun,
+                      result.nit))
+        print('##9## {0} {1} {2} {3} {4}'.format(result.x[0], result.x[1], result.x[2], x, y,))
+        params = DEFAULT_PARAMS.copy()
+        params['homogeneity_threshold'] = (result.x[0], result.x[1], result.x[2])
+        params['offset'] = (x, y)
+        return params
+
+ISSUES = [OptIssue1, OptIssue2, OptIssue3, OptIssue4, OptIssue5, OptIssue6, OptIssue7, OptIssue8, OptIssue9]
 
 
 def main():
@@ -351,7 +406,8 @@ def main():
                                 '5: {}\n'.format(OptIssue5.desc) +
                                 '6: {}\n'.format(OptIssue6.desc) +
                                 '7: {}\n'.format(OptIssue7.desc) +
-                                '8: {}\n'.format(OptIssue8.desc))
+                                '8: {}\n'.format(OptIssue8.desc) +
+                                '9: {}\n'.format(OptIssue9.desc))
     args = argparser.parse_args()
 
     if args.issue == 0:
@@ -370,7 +426,20 @@ def run_de(container_path, watermark_path, Issue):
     print('NP: {0}, CR: {1}, F: {2}, Iter: {3}'.format(Issue.np, Issue.cr, Issue.f, Issue.iter))
 
     de_time = time()
-    de_result = differential_evolution(Issue.func, Issue.bounds, (container, watermark),
+
+    qtar = QtarStego()
+    qtar.embed(container, watermark)
+    container_image = qtar.get_container_image()
+    stego_image = qtar.get_stego_image()
+    _PSNR = psnr(container_image, stego_image)
+    _Cap = qtar.get_fact_bpp()
+
+    other = {
+        'psnr': _PSNR,
+        'bpp': _Cap
+    }
+
+    de_result = differential_evolution(Issue.func, Issue.bounds, (container, watermark, other),
                                        strategy='rand1bin',
                                        popsize=Issue.np,
                                        mutation=Issue.f,

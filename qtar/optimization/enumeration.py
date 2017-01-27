@@ -6,11 +6,15 @@ from qtar.optimization.metrics import psnr, bcr
 from qtar.core.qtar import QtarStego, DEFAULT_PARAMS
 
 
-def enumerate_coordinates(img, watermark):
+def enumerate_coordinates(img_path, watermark_path):
+    img = Image.open(img_path).resize((256, 256), Image.BILINEAR)
+    watermark = Image.open(watermark_path).resize((256, 256), Image.BILINEAR)
+    print("{0}_in_{1}".format(watermark_path.split('\\')[-1].replace('.png', ''),
+                              img_path.split('\\')[-1].replace('.png', '')))
     params = DEFAULT_PARAMS
     params['quant_power'] = 10
-    for y in range(0, 255):
-        for x in range(0, 255):
+    for y in range(0, 3):
+        for x in range(0, 3):
             MAXBPP = len(img.getbands()) * 8
             _PSNR = 1
             _BCR = 0
@@ -39,11 +43,7 @@ def main():
     argparser.add_argument('watermark', type=str,
                            help='image to embed into container')
     args = argparser.parse_args()
-    img = Image.open(args.container).resize((256, 256), Image.BILINEAR)
-    watermark = Image.open(args.watermark).resize((256, 256), Image.BILINEAR)
-    enumerate_coordinates(img, watermark)
-
-
+    enumerate_coordinates(args.container, args.watermark)
 
 
 if __name__ == "__main__":

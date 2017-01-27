@@ -86,10 +86,13 @@ def test_qtar(params):
     if not params['not_save']:
         extracted_wm.save('images\stages\\7-extracted_watermark.bmp')
 
+    _BPP = qtar.get_fact_bpp()
+    _PSNR = psnr(container_image, stego_image)
+    _BCR = bcr(wm, extracted_wm)
     print("{0:.2f}bpp/{1:.4f}bpp, PSNR: {2:.4f}dB, BCR: {3:.4f}, wmsize: {4}x{5}"
-          .format(qtar.get_fact_bpp(), qtar.get_available_bpp(),
-                  psnr(container_image, stego_image),
-                  bcr(wm, extracted_wm), wm.size[0], wm.size[1]))
+          .format(_BPP, qtar.get_available_bpp(),
+                  _PSNR, _BCR, wm.size[0], wm.size[1]))
+    print("## {0} {1} {2}".format(_PSNR, _BPP, _BCR))
     print("_"*40+'\n')
 
 if __name__ == "__main__":

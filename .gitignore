@@ -2,5 +2,8 @@ images/
 .idea/
 env/
 logs/
+xls/
 __pycache__/
 *.exe
+*.xlsx
+*.log
