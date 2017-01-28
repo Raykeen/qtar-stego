@@ -361,7 +361,7 @@ class OptIssue9:
             _PSNR = psnr(container_image, stego_image)
             _BPP = qtar.get_fact_bpp()
 
-            if _PSNR < def_psnr and _BPP < def_bpp:
+            if _PSNR < def_psnr or _BPP < def_bpp:
                 return 0
 
             return -((_PSNR - def_psnr)/def_psnr + (_BPP - def_bpp)/def_bpp)
