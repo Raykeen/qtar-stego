@@ -94,6 +94,11 @@ def test_qtar(params):
                   _PSNR, _BCR, wm.size[0], wm.size[1]))
     print("## {0} {1} {2}".format(_PSNR, _BPP, _BCR))
     print("_"*40+'\n')
+    return {
+        "psnr": _PSNR,
+        "bcr": _BCR,
+        "bpp": _BPP
+    }
 
 if __name__ == "__main__":
     main(sys.argv)

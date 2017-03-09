@@ -8,13 +8,13 @@ class AdaptiveRegions:
     def __init__(self, regions, quant_power, indexes=None):
         self.quant_power = quant_power
         self.base_regions = regions
-        self.indexes = indexes or self._find_adaptive_regions()
-        self.regions = self._get_adaptive_regions()
+        self.indexes = indexes or self._find_regions()
+        self.regions = self._get_regions()
 
     def __len__(self):
         return len(self.base_regions)
 
-    def _find_adaptive_regions(self):
+    def _find_regions(self):
         aregions_indexes = list()
         for base_region in self.base_regions:
             size = base_region.shape[0]
@@ -30,7 +30,7 @@ class AdaptiveRegions:
                     break
         return aregions_indexes
 
-    def _get_adaptive_regions(self):
+    def _get_regions(self):
         arects = list()
         for i in range(0, self.base_regions.count):
             x0, y0, x1, y1 = self.base_regions.rects[i]
