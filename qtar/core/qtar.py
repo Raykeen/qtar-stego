@@ -225,8 +225,13 @@ class QtarStego:
         return self.convert_chs_to_image(self.image_chs, self.image.mode, self.offset)
 
     def get_qt_image(self):
-        matrix_chs = [qtree_regions.get_matrix_with_borders(only_right_bottom=True)
+        matrix_chs = [qtree_regions.matrix
                       for qtree_regions in self.qt_regions_chs]
+
+        for mx_ch, matrix_ch in enumerate(matrix_chs):
+            for qt_ch, qt_regions_ch in enumerate(self.qt_regions_chs):
+                matrix_chs[mx_ch] = MatrixRegions.draw_rects_on(matrix_chs[mx_ch], qt_regions_ch.rects, 0, True)
+            matrix_chs[mx_ch] = MatrixRegions.draw_rects_on(matrix_chs[mx_ch], self.qt_regions_chs[mx_ch].rects, 255, True)
         return self.convert_chs_to_image(matrix_chs, self.image.mode, self.offset)
 
     def get_dct_image(self):

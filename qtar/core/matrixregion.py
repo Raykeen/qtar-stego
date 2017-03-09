@@ -31,8 +31,12 @@ class MatrixRegions(object):
         return total_size
 
     def get_matrix_with_borders(self, value=255, only_right_bottom=False):
-        matrix = np.copy(self.matrix)
-        for region in self.rects:
+        return self.draw_rects_on(self.matrix, self.rects, value, only_right_bottom)
+
+    @staticmethod
+    def draw_rects_on(matrix, rects, value, only_right_bottom=False):
+        matrix = np.copy(matrix)
+        for region in rects:
             x0, y0, x1, y1 = region
             for x in range(x0, x1 - 1):
                 matrix[y1 - 1][x] = value
