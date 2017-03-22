@@ -8,6 +8,7 @@ try:
     workbook = openpyxl.load_workbook('xls\\enum.xlsx', guess_types=True)
 except:
     workbook = openpyxl.Workbook()
+    workbook.guess_types = True
 
 logs = listdir('logs')
 enum_logs = [log for log in logs if match("enum_[_.\w]*.log", log)]
