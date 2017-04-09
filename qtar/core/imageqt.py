@@ -47,15 +47,15 @@ class ImageQT(MatrixRegions):
         self.max_depth = 0
         self.all_nodes = []
         self.leaves = []
-        self.build_tree(QtNode(None, (0, 0, matrix.shape[1], matrix.shape[0])))
+        self.__build_tree(QtNode(None, (0, 0, matrix.shape[1], matrix.shape[0])))
         self.rects = [leave.rect for leave in self.leaves]
 
-    def build_tree(self, node):
+    def __build_tree(self, node):
         too_big = node.size > self.max_size
         too_small = node.size <= self.min_size
         self.all_nodes.append(node)
 
-        if (not too_big and self.spans_homogeneity(node.rect)) or too_small:
+        if (not too_big and self.__spans_homogeneity(node.rect)) or too_small:
             if node.depth > self.max_depth:
                 self.max_depth = node.depth
             self.leaves.append(node)
@@ -63,9 +63,9 @@ class ImageQT(MatrixRegions):
 
         children = node.subdivide()
         for child in children:
-            self.build_tree(child)
+            self.__build_tree(child)
 
-    def spans_homogeneity(self, rect):
+    def __spans_homogeneity(self, rect):
         region = self.get_region(rect)
         max_value = np.amax(region)
         min_value = np.amin(region)
@@ -80,6 +80,3 @@ class ImageQT(MatrixRegions):
                 if brightness <= bright_type_max:
                     return homogeneity < self.threshold[i] * 256
             return homogeneity < self.threshold[-1] * 256
-
-
-

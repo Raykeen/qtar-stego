@@ -1,14 +1,17 @@
 import warnings
 from itertools import islice
 from math import log2, pow, sqrt
+from copy import copy
 
-from qtar.core.imageqt import *
 from PIL import Image
 from PIL import ImageChops
 from numpy import array, zeros, append
 from scipy.fftpack import dct, idct
 
-from qtar.core.adaptiveregions import *
+from qtar.core.imageqt import ImageQT
+from qtar.core.adaptiveregions import adapt_regions
+from qtar.core.container import Container, Key
+from qtar.core.matrixregion import MatrixRegions, draw_borders_on
 
 DEFAULT_PARAMS = {
     'homogeneity_threshold': 0.4,
@@ -34,222 +37,211 @@ class QtarStego:
         self.quant_power = quant_power
         self.ch_scale = ch_scale
         self.offset = offset
-        self.image = Image.new("RGB", (512, 512), "white")
-        self.watermark = Image.new("RGB", (512, 512), "white")
-        self.size = 512
-        self.wm_size = (512, 512)
-        self.key_data = {'wm_shape': None, 'aregions': [[], [], []]}
-        self.image_chs = [[], [], []]
-        self.qt_regions_chs = [[], [], []]
-        self.dct_regions_chs = [[], [], []]
-        self.stego_img_chs = [[], [], []]
-        self.aregions_chs = [[], [], []]
-        self.watermark_chs = [[], [], []]
 
-    def embed(self, image, watermark=None, resize_to_fit=True):
-        self.image = image
-        self.watermark = watermark
-        self.size = int(pow(2, int(log2(min(image.width, image.height)))))
-        self.image_chs = self._prepare_image(image, self.size, self.offset)
-        self._alloc()
+    def embed(self, img_container, img_watermark=None, resize_to_fit=True, stages=False):
+        size = int(pow(2, int(log2(min(img_container.width, img_container.height)))))
+        img_container = self.__prepare_image(img_container, shape=(size, size), offset=self.offset)
+        chs_container = self.__convert_image_to_chs(img_container)
+        container_image_mode = img_container.mode
 
-        for channel, image_ch in enumerate(self.image_chs):
-            self._find_regions_in_channel(channel, image_ch)
-            self.key_data['aregions'][channel] = self.aregions_chs[channel]
+        key = Key()
+        container = Container(key=key)
 
-        available_space = self.get_available_space()
+        for ch, ch_image in enumerate(chs_container):
+            regions = self.__divide_into_regions(ch_image)
+            regions_dct = self.__dct_regions(regions)
+            regions_embed, a_indexes = self.__define_regions_to_embed(regions_dct)
+
+            container.chs_regions.append(regions)
+            container.chs_regions_dct.append(regions_dct)
+            container.chs_regions_dct_embed.append(regions_embed)
+            key.chs_rects.append(regions.rects)
+            key.chs_a_indexes.append(a_indexes)
+
+        available_space = container.available_space
+        wm_shape = img_watermark.size
         if resize_to_fit:
-            new_wm_size = int(sqrt(available_space))
-            self.watermark_chs = self._prepare_image(watermark, new_wm_size)
-            self.wm_size = (new_wm_size, new_wm_size)
-        else:
-            self.watermark_chs = self._prepare_image(watermark)
-            self.wm_size = watermark.size
-        self.key_data['wm_shape'] = self.watermark_chs[0].shape
+            wm_size = int(sqrt(available_space))
+            wm_shape = (wm_size, wm_size)
+        img_watermark = self.__prepare_image(img_watermark, shape=wm_shape, mode=img_container.mode)
+        chs_watermark = self.__convert_image_to_chs(img_watermark)
+        key.wm_shape = wm_shape
 
-        for channel, image_ch in enumerate(self.image_chs):
-            self._embed_in_channel(channel, self.watermark_chs[channel])
+        chs_stego_img = []
+        chs_embeded_dct_regions = []
+        for regions_dct, embed_dct_regions, wm_ch in zip(container.chs_regions_dct,
+                                                         container.chs_regions_dct_embed,
+                                                         chs_watermark):
+            embeded_dct_regions = self.__embed_in_regions(embed_dct_regions, wm_ch)
+            idct_regions = MatrixRegions(regions_dct.rects, embeded_dct_regions.matrix)
+            stego_img_regions = self.__idct_regions(idct_regions)
+            chs_stego_img.append(stego_img_regions.matrix)
+            chs_embeded_dct_regions.append(embeded_dct_regions)
 
-        return self.key_data
+        img_stego = self.__chs_to_image(chs_stego_img, container_image_mode)
+        stages_imgs = None
+        if stages:
+            stages_imgs = {
+                "1-container": img_container,
+                "2-quad_tree": self.__regions_to_image(container.chs_regions, container_image_mode,
+                                                       borders=True, only_right_bottom=True),
+                "3-adaptive_regions": self.__regions_to_image(container.chs_regions_dct_embed, container_image_mode,
+                                                              borders=True, factor=10),
+                "4-dct": self.__regions_to_image(chs_embeded_dct_regions, container_image_mode,
+                                                 factor=10),
+                "5-watermark": img_watermark,
+                "6-stego_image": img_stego
+            }
+        return StegoEmbedResult(img_stego, key, container.fact_bpp, stages_imgs)
 
-    def extract(self, stego_image, key_data):
-        self.key_data = key_data
-        self.size = min(stego_image.width, stego_image.height)
-        self.stego_img_chs = self._prepare_image(stego_image, offset=self.offset)
-        for channel, stego_image_ch in enumerate(self.stego_img_chs):
-            self.watermark_chs[channel] = self._extract_from_channel(channel, stego_image_ch, self.key_data)
-
-        return self.get_wm()
-
-    def _find_regions_in_channel(self, channel, image_ch):
-        qt_regions = ImageQT(image_ch,
-                             self.min_block_size,
-                             min(self.max_block_size, self.size),
-                             self.homogeneity_threshold)
-        dct_regions = self._dct_2d(qt_regions)
-        adaptive_regions = AdaptiveRegions(dct_regions, self.quant_power)
-
-        self.qt_regions_chs[channel] = qt_regions
-        self.dct_regions_chs[channel] = dct_regions
-        self.aregions_chs[channel] = adaptive_regions
-
-    def _embed_in_channel(self, channel, watermark_ch=None):
-        aregions = self.aregions_chs[channel].regions
-        dct_regions = self.dct_regions_chs[channel]
-        self._embed_in_aregions(aregions, watermark_ch)
-        stego_img = self._dct_2d(dct_regions, True)
-        self.stego_img_chs[channel] = stego_img.matrix
-
-    def _extract_from_channel(self, channel, stego_image_ch, key_data):
-        aregions = key_data['aregions'][channel]
-        wm_shape = key_data['wm_shape']
-        qt_regions = MatrixRegions(aregions.base_regions.rects, stego_image_ch)
-        dct_regions = self._dct_2d(qt_regions)
-        adaptive_regions = AdaptiveRegions(dct_regions, self.quant_power, aregions.indexes)
-
-        watermark_ch = self._extract_from_aregions(adaptive_regions.regions, wm_shape)
-
-        self.qt_regions_chs[channel] = qt_regions
-        self.dct_regions_chs[channel] = dct_regions
-        self.aregions_chs[channel] = adaptive_regions.regions
-        self.watermark_chs[channel] = watermark_ch
-
-        return watermark_ch
-
-    def _embed_in_aregions(self, aregions, watermark_ch):
-        wm_iter = watermark_ch.flat
-        stop = False
-        for i in range(0, aregions.count):
-            aregion = aregions[i]
-            size = aregion.size
-            shape = aregion.shape
-            flat_stego_region = array(list(islice(wm_iter, size)))
-            if flat_stego_region.size < size:
-                flat_aregion = list(aregion.flat)
-                flat_stego_region = append(flat_stego_region, flat_aregion[flat_stego_region.size:size])
-                stop = True
-            stego_region = flat_stego_region.reshape(shape)
-            aregions[i] = stego_region / 255 * self.ch_scale
-            if stop: return
-        if not stop:
-            try:
-                next(wm_iter)
-            except StopIteration:
-                return
-            warnings.warn("Container capacity is not enough for embedding given secret image. Extracted secret image will be not complete.")
-
-    def _extract_from_aregions(self, aregions, wm_shape):
-        flat_stego_region = array([])
-        wm_size = wm_shape[0] * wm_shape[1]
-        for i in range(0, aregions.count):
-            aregion = aregions[i]
-            flat_aregion = list(aregion.flat)
-            flat_stego_region = append(flat_stego_region, flat_aregion)
-            if flat_stego_region.size >= wm_size:
-                break
-        if flat_stego_region.size <= wm_size:
-            flat_stego_region = append(flat_stego_region, zeros(wm_size-flat_stego_region.size))
-        watermark_ch = flat_stego_region[0:wm_size].reshape(wm_shape)
-        return watermark_ch * 255 / self.ch_scale
-
-    def _alloc(self):
-        self.key_data['aregions'] = []
-        self.qt_regions_chs = []
-        self.dct_regions_chs = []
-        self.stego_img_chs = []
-        self.aregions_chs = []
-        self.watermark_chs = []
-        for i in range(0, len(self.image_chs)):
-            self.key_data['aregions'].append([])
-            self.qt_regions_chs.append([])
-            self.dct_regions_chs.append([])
-            self.stego_img_chs.append([])
-            self.aregions_chs.append([])
-            self.watermark_chs.append([])
-
-    def _prepare_image(self, image, size=None, offset=None):
-        prepared = image
-
-        if size is not None:
-            prepared = prepared.resize((size, size), Image.BILINEAR)
+    @staticmethod
+    def __prepare_image(image, shape=None, offset=None, mode=None):
+        if shape is not None:
+            image = image.resize(shape, Image.BILINEAR)
         if offset is not None:
             x, y = offset
-            prepared = ImageChops.offset(prepared, x, y)
-        if image.mode != self.image.mode:
-            prepared = image.convert(self.image.mode)
+            image = ImageChops.offset(image, x, y)
+        if mode is not None:
+            image = image.convert(mode)
+        return image
 
-        image_channels_arrays = [array(image_channel) for image_channel in prepared.split()]
-        return image_channels_arrays
+    def __divide_into_regions(self, chs_image):
+        size = min(self.max_block_size, chs_image.shape[0])
+        return ImageQT(chs_image, self.min_block_size, size, self.homogeneity_threshold)
 
-    def _dct_2d(self, regions, inverse=False):
-        result_mx = zeros((self.size, self.size))
-        dct_regions = MatrixRegions(regions.rects, result_mx)
+    @staticmethod
+    def __dct_regions(regions, inverse=False):
+        size = regions.matrix.shape[0]
+        mx_result = zeros((size, size))
+        regions_dct = MatrixRegions(regions.rects, mx_result)
         for i, region in enumerate(regions):
             if inverse:
                 region_dct = idct(idct(region.T, norm='ortho').T, norm='ortho')
             else:
                 region_dct = dct(dct(region, norm='ortho').T, norm='ortho').T
-            dct_regions[i] = region_dct
-        return dct_regions
+            regions_dct[i] = region_dct
+        return regions_dct
 
-    def get_available_space(self):
-        space_availible = []
-        for aregions_ch in self.aregions_chs:
-            space_availible.append(aregions_ch.regions.get_total_size())
-        return min(space_availible)
+    @classmethod
+    def __idct_regions(cls, regions):
+        return cls.__dct_regions(regions, True)
 
-    def get_available_bpp(self):
-        total_size = 0
-        for aregions in self.aregions_chs:
-            total_size += aregions.get_total_size()
-        bpp = (total_size * 8) / self.size**2
-        return bpp
+    def __define_regions_to_embed(self, regions):
+        return adapt_regions(regions, q_power=self.quant_power)
 
-    def get_fact_bpp(self):
-        wm_w, wm_h = self.wm_size
-        ch_count = len(self.image_chs)
-        return (8*ch_count*wm_w * wm_h) / self.size**2
+    def __embed_in_regions(self, regions, ch_watermark):
+        regions = MatrixRegions(regions.rects, copy(regions.matrix))
+        wm_iter = ch_watermark.flat
+        stop = False
+        for i in range(0, len(regions)):
+            region = regions[i]
+            size = region.size
+            shape = region.shape
+            region_stego_flat = array(list(islice(wm_iter, size)))
+            if region_stego_flat.size < size:
+                region_flat = list(region.flat)
+                region_stego_flat = append(region_stego_flat, region_flat[region_stego_flat.size:size])
+                stop = True
+            region_stego = region_stego_flat.reshape(shape)
+            regions[i] = region_stego / 255 * self.ch_scale
+            if stop:
+                return regions
+        if not stop:
+            try:
+                next(wm_iter)
+            except StopIteration:
+                return regions
+            warnings.warn("Container capacity is not enough for embedding given secret image."
+                          "Extracted secret image will be not complete.")
+
+    def extract(self, img_stego, key, stages=False):
+        img_stego = self.__prepare_image(img_stego, offset=self.offset)
+        chs_stego = self.__convert_image_to_chs(img_stego)
+        stego_image_mode = img_stego.mode
+
+        chs_regions = []
+        chs_regions_extract = []
+        chs_watermark = []
+        for ch, ch_stego in enumerate(chs_stego):
+            rects = key.chs_rects[ch]
+            a_indexes = key.chs_a_indexes[ch]
+            wm_shape = key.wm_shape
+            regions = MatrixRegions(rects, ch_stego)
+            regions_dct = self.__idct_regions(regions)
+            regions_extract = self.__define_regions_to_extract(regions_dct, a_indexes)
+            ch_watermark = self.__extract_from_regions(regions_extract, wm_shape)
+            chs_regions.append(regions)
+            chs_regions_extract.append(regions_extract)
+            chs_watermark.append(ch_watermark)
+
+        if stages:
+            stages_imgs = {
+                "7-quad_tree":  self.__regions_to_image(chs_regions, stego_image_mode,
+                                                        borders=True, only_right_bottom=True),
+                "8-adaptive_regions": self.__regions_to_image(chs_regions_extract, stego_image_mode,
+                                                              borders=True, factor=10),
+                "9-extracted_watermark": self.__chs_to_image(chs_watermark, stego_image_mode)
+            }
+            return stages_imgs
+        else:
+            return self.__chs_to_image(chs_watermark, stego_image_mode)
 
     @staticmethod
-    def convert_chs_to_image(matrix_chs, mode, offset=None):
-        image_chs = [Image.fromarray(image_ch).convert('L')
-                     for image_ch in matrix_chs]
-        result_image = Image.merge(mode, image_chs)
+    def __define_regions_to_extract(regions, a_indexes):
+        regions_extract, a_indexes = adapt_regions(regions, a_indexes=a_indexes)
+        return regions_extract
+
+    def __extract_from_regions(self, regions, wm_shape):
+        regions = MatrixRegions(regions.rects, copy(regions.matrix))
+        region_stego_flat = array([])
+        wm_size = wm_shape[0] * wm_shape[1]
+        for region in regions:
+            region_flat = list(region.flat)
+            region_stego_flat = append(region_stego_flat, region_flat)
+            if region_stego_flat.size >= wm_size:
+                break
+        if region_stego_flat.size <= wm_size:
+            region_stego_flat = append(region_stego_flat, zeros(wm_size - region_stego_flat.size))
+        ch_watermark = region_stego_flat[0:wm_size].reshape(wm_shape)
+        return ch_watermark * 255 / self.ch_scale
+
+    @staticmethod
+    def __convert_image_to_chs(image):
+        chs_image = [array(ch_image)
+                     for ch_image in image.split()]
+        return chs_image
+
+    @staticmethod
+    def __chs_to_image(chs_matrix, mode, offset=None, factor=1):
+        chs_image = [Image.fromarray(ch_matrix * factor).convert('L')
+                     for ch_matrix in chs_matrix]
+        image = Image.merge(mode, chs_image)
         if offset is not None:
             x, y = offset
-            result_image = ImageChops.offset(result_image, -x, -y)
+            image = ImageChops.offset(image, -x, -y)
 
-        return result_image
+        return image
 
-    def get_container_image(self):
-        return self.convert_chs_to_image(self.image_chs, self.image.mode, self.offset)
+    @staticmethod
+    def __draw_borders(chs_regions, only_right_bottom=False):
+        chs_matrix = [ch_regions.matrix for ch_regions in chs_regions]
+        max_value = max([ch_matrix.max() for ch_matrix in chs_matrix])
 
-    def get_qt_image(self):
-        matrix_chs = [qtree_regions.matrix
-                      for qtree_regions in self.qt_regions_chs]
+        for ch_id in range(0, len(chs_matrix)):
+            for ch_regions in chs_regions:
+                chs_matrix[ch_id] = draw_borders_on(chs_matrix[ch_id], ch_regions.rects, 0, only_right_bottom)
+            chs_matrix[ch_id] = draw_borders_on(chs_matrix[ch_id], chs_regions[ch_id].rects, max_value,
+                                                only_right_bottom)
+        return chs_matrix
 
-        for mx_ch, matrix_ch in enumerate(matrix_chs):
-            for qt_ch, qt_regions_ch in enumerate(self.qt_regions_chs):
-                matrix_chs[mx_ch] = MatrixRegions.draw_rects_on(matrix_chs[mx_ch], qt_regions_ch.rects, 0, True)
-            matrix_chs[mx_ch] = MatrixRegions.draw_rects_on(matrix_chs[mx_ch], self.qt_regions_chs[mx_ch].rects, 255, True)
-        return self.convert_chs_to_image(matrix_chs, self.image.mode, self.offset)
+    @classmethod
+    def __regions_to_image(cls, chs_regions, mode, offset=None, factor=1, borders=False, only_right_bottom=False):
+        if borders:
+            chs_matrix = cls.__draw_borders(chs_regions, only_right_bottom)
+        else:
+            chs_matrix = [ch_regions.matrix for ch_regions in chs_regions]
 
-    def get_dct_image(self):
-        matrix_chs = [dct_regions.matrix * 10
-                      for dct_regions in self.dct_regions_chs]
-        return self.convert_chs_to_image(matrix_chs, self.image.mode, self.offset)
-
-    def get_ar_image(self):
-        max_dct_value = max([dct_regions.matrix.max() for dct_regions in self.dct_regions_chs])
-        matrix_chs = [aregions.regions.get_matrix_with_borders(value=max_dct_value)
-                      for aregions in self.aregions_chs]
-        return self.convert_chs_to_image(matrix_chs, self.image.mode, self.offset)
-
-    def get_stego_image(self):
-        return self.convert_chs_to_image(self.stego_img_chs, self.image.mode, self.offset)
-
-    def get_wm(self):
-        return self.convert_chs_to_image(self.watermark_chs, self.image.mode)
+        return cls.__chs_to_image(chs_matrix, mode, offset, factor)
 
     @staticmethod
     def from_dict(params):
@@ -259,3 +251,11 @@ class QtarStego:
                          params['quant_power'],
                          params['ch_scale'],
                          params['offset'])
+
+
+class StegoEmbedResult:
+    def __init__(self, img_stego, key, bpp, stages_imgs=None):
+        self.stego_img = img_stego
+        self.key = key
+        self.bpp = bpp
+        self.stages_imgs = stages_imgs

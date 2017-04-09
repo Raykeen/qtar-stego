@@ -5,47 +5,53 @@ class MatrixRegions(object):
     def __init__(self, rects, matrix):
         self.matrix = matrix
         self.rects = rects
-        self.count = len(rects)
 
     def __getitem__(self, i):
         mx_region = self.get_region(self.rects[i])
         return mx_region
 
-    def __setitem__(self, key, value):
-        x0, y0, x1, y1 = self.rects[key]
-        h = y1 - y0
-        w = x1 - x0
-        for y, i in zip(range(y0, y1), range(0, h)):
-            for x, j in zip(range(x0, x1), range(0, w)):
-                self.matrix[y][x] = value[i][j]
+    def __setitem__(self, i, value):
+        self.set_region(self.rects[i], value)
+
+    def __len__(self):
+        return len(self.rects)
 
     def get_region(self, rect):
         x0, y0, x1, y1 = rect
         return self.matrix[y0:y1, x0:x1]
 
-    def get_total_size(self):
-        total_size = 0
-        for rect in self.rects:
-            x0, y0, x1, y1 = rect
-            total_size += (x1 - x0) * (y1 - y0)
-        return total_size
+    def set_region(self, rect, value):
+        x0, y0, x1, y1 = rect
+        self.matrix[y0:y1, x0:x1] = value
 
-    def get_matrix_with_borders(self, value=255, only_right_bottom=False):
-        return self.draw_rects_on(self.matrix, self.rects, value, only_right_bottom)
+    @property
+    def total_size(self):
+            total_size = 0
+            for i in range(len(self.rects)):
+                total_size += self.rect_size(i)
+            return total_size
 
-    @staticmethod
-    def draw_rects_on(matrix, rects, value, only_right_bottom=False):
-        matrix = np.copy(matrix)
-        for region in rects:
-            x0, y0, x1, y1 = region
-            for x in range(x0, x1 - 1):
-                matrix[y1 - 1][x] = value
-                if not only_right_bottom:
-                    matrix[y0][x] = value
+    def rect_size(self, i):
+        x0, y0, x1, y1 = self.rects[i]
+        return (x1 - x0) * (y1 - y0)
 
-            for y in range(y0, y1 - 1):
-                matrix[y][x1 - 1] = value
-                if not only_right_bottom:
-                    matrix[y][x0] = value
 
-        return matrix
+def draw_borders_on(matrix, rects, value, only_right_bottom=False):
+    matrix = np.copy(matrix)
+    for region in rects:
+        x0, y0, x1, y1 = region
+        for x in range(x0, x1 - 1):
+            matrix[y1 - 1][x] = value
+            if not only_right_bottom:
+                matrix[y0][x] = value
+
+        for y in range(y0, y1 - 1):
+            matrix[y][x1 - 1] = value
+            if not only_right_bottom:
+                matrix[y][x0] = value
+
+    return matrix
+
+
+def draw_borders(regions, value, only_right_bottom=False):
+    return draw_borders_on(regions.matrix, regions.rects, value, only_right_bottom)

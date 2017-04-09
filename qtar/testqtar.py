@@ -42,34 +42,31 @@ def test_qtar(params):
     qtar = QtarStego.from_dict(params)
 
     embed_time = time()
-    key_data = qtar.embed(img, watermark)
+    embed_result = qtar.embed(img, watermark, stages=True)
     print("embedded in {0:.4f} seconds".format(time() - embed_time))
 
-    container_image = qtar.get_container_image()
-    stego_image = qtar.get_stego_image()
-    wm = qtar.get_wm()
+    container_image = embed_result.stages_imgs["1-container"]
+    stego_image = embed_result.stages_imgs["6-stego_image"]
+    wm = embed_result.stages_imgs["5-watermark"]
 
     if not params['not_save']:
-        container_image.save('images\stages\\1-container.bmp')
-        qtar.get_qt_image().save('images\stages\\2-quad_tree.bmp')
-        qtar.get_dct_image().save('images\stages\\3-dct.bmp')
-        qtar.get_ar_image().save('images\stages\\4-adaptive_regions.bmp')
-        stego_image.save('images\stages\\6-stego_image.bmp')
-        wm.save('images\stages\\5-watermark.bmp')
+        for name, img in embed_result.stages_imgs.items():
+            img.save('images\stages\\' + name + '.bmp')
 
     extract_time = time()
-    extracted_wm = qtar.extract(stego_image, key_data)
+    extract_stages_imgs = qtar.extract(stego_image, embed_result.key, stages=True)
     print("extracted in {0:.4f} seconds\n".format(time() - extract_time))
+    extracted_wm = extract_stages_imgs['9-extracted_watermark']
 
     if not params['not_save']:
-        extracted_wm.save('images\stages\\7-extracted_watermark.bmp')
+        for name, img in extract_stages_imgs.items():
+            img.save('images\stages\\' + name + '.bmp')
 
-    _BPP = qtar.get_fact_bpp()
+    _BPP = embed_result.bpp
     _PSNR = psnr(container_image, stego_image)
     _BCR = bcr(wm, extracted_wm)
-    print("{0:.2f}bpp/{1:.4f}bpp, PSNR: {2:.4f}dB, BCR: {3:.4f}, wmsize: {4}x{5}"
-          .format(_BPP, qtar.get_available_bpp(),
-                  _PSNR, _BCR, wm.size[0], wm.size[1]))
+    print("{0:.2f}bpp, PSNR: {1:.4f}dB, BCR: {2:.4f}, wmsize: {3}x{4}"
+          .format(_BPP, _PSNR, _BCR, wm.size[0], wm.size[1]))
     print("## {0} {1} {2}".format(_PSNR, _BPP, _BCR))
     print("_"*40+'\n')
     return {
