@@ -1,7 +1,7 @@
 import argparse
-from qtar.core.qtar import QtarStego, DEFAULT_PARAMS
+from qtar.core.qtar import DEFAULT_PARAMS
 
-argparser = argparse.ArgumentParser()
+argparser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
 argparser.add_argument('container', type=str,
                        help='container image')
 argparser.add_argument('watermark', type=str,

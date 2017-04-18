@@ -1,4 +1,6 @@
-from qtar.core.matrixregion import *
+import numpy as np
+
+from qtar.core.matrixregion import MatrixRegions
 
 
 class QtNode:
@@ -76,7 +78,7 @@ class ImageQT(MatrixRegions):
             brightness = np.average(region)
             bright_types_count = len(self.threshold)
             for i in range(0, bright_types_count-1):
-                bright_type_max = (int(255 / bright_types_count * (i + 1)))
+                bright_type_max = int(255 / bright_types_count * (i + 1))
                 if brightness <= bright_type_max:
                     return homogeneity < self.threshold[i] * 256
             return homogeneity < self.threshold[-1] * 256

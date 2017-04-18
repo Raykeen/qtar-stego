@@ -38,17 +38,13 @@ class MatrixRegions(object):
 
 def draw_borders_on(matrix, rects, value, only_right_bottom=False):
     matrix = np.copy(matrix)
-    for region in rects:
-        x0, y0, x1, y1 = region
-        for x in range(x0, x1 - 1):
-            matrix[y1 - 1][x] = value
-            if not only_right_bottom:
-                matrix[y0][x] = value
-
-        for y in range(y0, y1 - 1):
-            matrix[y][x1 - 1] = value
-            if not only_right_bottom:
-                matrix[y][x0] = value
+    for rect in rects:
+        x0, y0, x1, y1 = rect
+        matrix[y1-1, x0:x1] = value
+        matrix[y0:y1, x1-1] = value
+        if not only_right_bottom:
+            matrix[y0, x0:x1] = value
+            matrix[y0:y1, x0] = value
 
     return matrix
 

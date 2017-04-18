@@ -92,7 +92,7 @@ class QtarStego:
                 "5-watermark": img_watermark,
                 "6-stego_image": img_stego
             }
-        return StegoEmbedResult(img_stego, key, container.fact_bpp, stages_imgs)
+        return StegoEmbedResult(img_stego, key, container.fact_bpp, img_container, img_watermark,  stages_imgs)
 
     @staticmethod
     def __prepare_image(image, shape=None, offset=None, mode=None):
@@ -167,7 +167,7 @@ class QtarStego:
             a_indexes = key.chs_a_indexes[ch]
             wm_shape = key.wm_shape
             regions = MatrixRegions(rects, ch_stego)
-            regions_dct = self.__idct_regions(regions)
+            regions_dct = self.__dct_regions(regions)
             regions_extract = self.__define_regions_to_extract(regions_dct, a_indexes)
             ch_watermark = self.__extract_from_regions(regions_extract, wm_shape)
             chs_regions.append(regions)
@@ -254,8 +254,10 @@ class QtarStego:
 
 
 class StegoEmbedResult:
-    def __init__(self, img_stego, key, bpp, stages_imgs=None):
-        self.stego_img = img_stego
+    def __init__(self, img_stego, key, bpp, img_container=None, img_watermark=None, stages_imgs=None):
+        self.img_stego = img_stego
+        self.img_container = img_container
+        self.img_watermark = img_watermark
         self.key = key
         self.bpp = bpp
         self.stages_imgs = stages_imgs
