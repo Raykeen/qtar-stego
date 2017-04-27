@@ -3,9 +3,10 @@ from qtar.core.adaptiveregions import adapt_regions
 
 
 class Key:
-    def __init__(self, chs_rects=[], chs_a_indexes=[], wm_shape=None):
-        self.chs_rects = chs_rects
-        self.chs_a_indexes = chs_a_indexes
+    def __init__(self, params=None, chs_rects=None, chs_a_indexes=None, wm_shape=None):
+        self.params = params
+        self.chs_rects = chs_rects or []
+        self.chs_a_indexes = chs_a_indexes or []
         self.wm_shape = wm_shape
 
     def save(self):
@@ -16,10 +17,10 @@ class Key:
 
 
 class Container:
-    def __init__(self, chs_regions=[], chs_regions_dct=[], chs_regions_dct_embed=[], key=Key()):
-        self.chs_regions = chs_regions
-        self.chs_regions_dct = chs_regions_dct
-        self.chs_regions_dct_embed = chs_regions_dct_embed
+    def __init__(self, chs_regions=None, chs_regions_dct=None, chs_regions_dct_embed=None, key=Key()):
+        self.chs_regions = chs_regions or []
+        self.chs_regions_dct = chs_regions_dct or []
+        self.chs_regions_dct_embed = chs_regions_dct_embed or []
         self.key = key
 
     @property

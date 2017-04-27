@@ -15,11 +15,11 @@ from qtar.core.matrixregion import MatrixRegions, draw_borders_on
 
 DEFAULT_PARAMS = {
     'homogeneity_threshold': 0.4,
-    'min_block_size': 8,
-    'max_block_size': 512,
-    'quant_power': 1,
-    'ch_scale': 4.37,
-    'offset': None
+    'min_block_size':        8,
+    'max_block_size':        512,
+    'quant_power':           1,
+    'ch_scale':              4.37,
+    'offset':                (0, 0)
 }
 
 
@@ -44,7 +44,7 @@ class QtarStego:
         chs_container = self.__convert_image_to_chs(img_container)
         container_image_mode = img_container.mode
 
-        key = Key()
+        key = Key(params=self.params)
         container = Container(key=key)
 
         for ch, ch_image in enumerate(chs_container):
@@ -68,17 +68,19 @@ class QtarStego:
         key.wm_shape = wm_shape
 
         chs_stego_img = []
-        chs_embeded_dct_regions = []
+        chs_embedded_dct_regions = []
         for regions_dct, embed_dct_regions, wm_ch in zip(container.chs_regions_dct,
                                                          container.chs_regions_dct_embed,
                                                          chs_watermark):
-            embeded_dct_regions = self.__embed_in_regions(embed_dct_regions, wm_ch)
-            idct_regions = MatrixRegions(regions_dct.rects, embeded_dct_regions.matrix)
+            embedded_dct_regions = self.__embed_in_regions(embed_dct_regions, wm_ch)
+            idct_regions = MatrixRegions(regions_dct.rects, embedded_dct_regions.matrix)
             stego_img_regions = self.__idct_regions(idct_regions)
             chs_stego_img.append(stego_img_regions.matrix)
-            chs_embeded_dct_regions.append(embeded_dct_regions)
+            chs_embedded_dct_regions.append(embedded_dct_regions)
 
         img_stego = self.__chs_to_image(chs_stego_img, container_image_mode)
+        img_stego = self.__prepare_image(img_stego, offset=(-self.offset[0], -self.offset[1]))
+        img_container = self.__prepare_image(img_container, offset=(-self.offset[0], -self.offset[1]))
         stages_imgs = None
         if stages:
             stages_imgs = {
@@ -87,7 +89,7 @@ class QtarStego:
                                                        borders=True, only_right_bottom=True),
                 "3-adaptive_regions": self.__regions_to_image(container.chs_regions_dct_embed, container_image_mode,
                                                               borders=True, factor=10),
-                "4-dct": self.__regions_to_image(chs_embeded_dct_regions, container_image_mode,
+                "4-dct": self.__regions_to_image(chs_embedded_dct_regions, container_image_mode,
                                                  factor=10),
                 "5-watermark": img_watermark,
                 "6-stego_image": img_stego
@@ -242,6 +244,17 @@ class QtarStego:
             chs_matrix = [ch_regions.matrix for ch_regions in chs_regions]
 
         return cls.__chs_to_image(chs_matrix, mode, offset, factor)
+
+    @property
+    def params(self):
+        return {
+            'homogeneity_threshold': self.homogeneity_threshold,
+            'min_block_size':        self.min_block_size,
+            'max_block_size':        self.max_block_size,
+            'quant_power':           self.quant_power,
+            'ch_scale':              self.ch_scale,
+            'offset':                self.offset
+        }
 
     @staticmethod
     def from_dict(params):

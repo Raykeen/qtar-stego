@@ -1,7 +1,4 @@
-from time import time
-
 from PIL import Image
-from qtar.core.qtar import DEFAULT_PARAMS
 from scipy.optimize import differential_evolution
 
 from qtar.core.argparser import argparser
@@ -16,6 +13,7 @@ NP:   {i.np},
 CR:   {i.cr},
 F:    {i.f},
 Iter: {i.iter}
+
 Optimization issue:
 {i.desc}
 """
@@ -25,17 +23,20 @@ def main():
     issue_descriptions = ['%d: %s' % (i+1, Issue.desc) for i, Issue in enumerate(ISSUES)]
     argparser.add_argument('issue', type=int, default=0,
                            help='0: Run all optimizations\n' + '\n'.join(issue_descriptions))
+    argparser.add_argument('-rc', '--container_size', metavar='container_size',
+                           type=int, nargs=2, default=None,
+                           help='resize container image')
+    argparser.add_argument('-rw', '--watermark_size', metavar='watermark_size',
+                           type=int, nargs=2, default=None,
+                           help='resize watermark')
     args = argparser.parse_args()
+    params = vars(args)
 
     if args.issue == 0:
         for Issue in ISSUES:
-            run_de(args, Issue)
+            run_de(params, Issue)
     else:
-        run_de(args, ISSUES[args.issue-1])
-
-
-if __name__ == "__main__":
-    main()
+        run_de(params, ISSUES[args.issue-1])
 
 
 def run_de(params, Issue):
@@ -45,9 +46,8 @@ def run_de(params, Issue):
     watermark = Image.open(params['watermark'])
     if params['watermark_size']:
         watermark = watermark.resize((params['watermark_size'][0], params['watermark_size'][1]), Image.BILINEAR)
-    params['container_size'] = (512, 512)
-    params['watermark_size'] = None
     params['not_save'] = True
+    print('Embedding with default params:')
     default_metrics = embed(params)
 
     de_info = DE_INFO_TEMPLATE.format(i=Issue)
@@ -62,9 +62,21 @@ def run_de(params, Issue):
                                            tol=0,
                                            maxiter=Issue.iter)
 
-    print("\nResult:")
     new_params = Issue.get_new_params(de_result)
+
+    print("\nResult:")
+    for name, value in new_params.items():
+        if type(value) is float:
+            value = "{:.4f}".format(value)
+        print("{name}: {value}".format(name=name, value=value))
+    print("func: {:.4f}\n".format(de_result.fun))
+
+    print("_" * 40 + '\n')
+    print('Embedding with new params:')
+
     params.update(new_params)
     return embed(params)
 
 
+if __name__ == "__main__":
+    main()

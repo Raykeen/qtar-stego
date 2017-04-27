@@ -25,9 +25,6 @@ class OptIssue1:
 
     @staticmethod
     def get_new_params(result):
-        print('threshold: {th[0]:.2f} {th[1]:.2f} {th[2]:.2f},\nPSNR: {psnr:.2f}'
-              .format(th=result.x, psnr=-result.fun))
-
         return {"homogeneity_threshold": result.x}
 
 
@@ -50,9 +47,6 @@ class OptIssue2:
 
     @staticmethod
     def get_new_params(result):
-        print('threshold: {th[0]:.2f} {th[1]:.2f} {th[2]:.2f},\nBCR: {bcr:.2f}'
-              .format(th=result.x, bcr=-result.fun))
-
         return {"homogeneity_threshold": result.x}
 
 
@@ -75,10 +69,6 @@ class OptIssue3:
 
     @staticmethod
     def get_new_params(result):
-        print('Offset: {offset}, \nPSNR: {psnr:.2f}'.format(
-            offset=array(result.x).astype(int),
-            psnr=-result.fun))
-
         return {'offset': array(result.x).astype(int)}
 
 
@@ -101,10 +91,6 @@ class OptIssue4:
 
     @staticmethod
     def get_new_params(result):
-        print('offset: {offset}, \nBCR: {bcr:.2f}'.format(
-            offset=array(result.x).astype(int),
-            bcr=-result.fun))
-
         return {'offset': array(result.x).astype(int)}
 
 
@@ -131,16 +117,6 @@ class OptIssue5:
 
     @staticmethod
     def get_new_params(result):
-        print('max block size:     {max},\n'
-              'quantization power: {qp:.2f},\n'
-              'channel scale:      {cs:.2f},\n'
-              'PSNR:               {psnr:.2f}'
-              .format(
-                max=2 ** int(result.x[0]),
-                qp=result.x[1],
-                cs=result.x[2],
-                psnr=-result.fun))
-
         return {
             'max_block_size': 2 ** int(result.x[0]),
             'quant_power': result.x[1],
@@ -170,16 +146,6 @@ class OptIssue6:
 
     @staticmethod
     def get_new_params(result):
-        print('max block size:     {max},\n'
-              'quantization power: {qp:.2f},\n'
-              'channel scale:      {cs:.2f},\n'
-              'BCR:                {bcr:.2f}'
-              .format(
-                max=2 ** int(result.x[0]),
-                qp=result.x[1],
-                cs=result.x[2],
-                bcr=-result.fun))
-
         return {
             'max_block_size': 2 ** int(result.x[0]),
             'quant_power': result.x[1],
@@ -234,18 +200,6 @@ class OptIssue7:
         min_b = 2 ** int(result.x[4])
         if min_b > max_b:
             max_b = min_b
-        print('threshold: {th[0]:.2f} {th[1]:.2f} {th[2]:.2f}, \n'
-              'min-max block size: {min}-{max}, \n'
-              'quantization power: {qp:.2f}, \n'
-              'channel scale: {cs:.2f}, \n'
-              'func: {f:.2f}'
-              .format(
-                th=(result.x[0], result.x[1], result.x[2]),
-                min=min_b,
-                max=max_b,
-                qp=result.x[5],
-                cs=result.x[6],
-                f=result.fun))
 
         return {
             'homogeneity_threshold': (result.x[0], result.x[1], result.x[2]),
@@ -300,25 +254,12 @@ class OptIssue8:
 
     @staticmethod
     def get_new_params(result):
-        x = int(result.x[3])
-        y = int(result.x[4])
-        print('threshold: {th[0]:.2f} {th[1]:.2f} {th[2]:.2f}, \n'
-              'offset: ({offset[0]}, {offset[1]}) \n'
-              'quant power: {qp:.2f}, \n'
-              'channel scale: {cs:.2f}, \n'
-              'func: {f:.2f}'
-              .format(th=(result.x[0], result.x[1], result.x[2]),
-                      offset=(x, y),
-                      qp=result.x[5],
-                      cs=result.x[6],
-                      f=result.fun,))
-
-        params = DEFAULT_PARAMS.copy()
-        params['homogeneity_threshold'] = (result.x[0], result.x[1], result.x[2])
-        params['offset'] = (x, y)
-        params['quant_power'] = result.x[5]
-        params['ch_scale'] = result.x[6]
-        return params
+        return {
+            'homogeneity_threshold': (result.x[0], result.x[1], result.x[2]),
+            'offset': (int(result.x[3]), int(result.x[4])),
+            'quant_power': result.x[5],
+            'ch_scale': result.x[6]
+        }
 
 
 class OptIssue9:
@@ -327,15 +268,17 @@ class OptIssue9:
            'params: threshold for 3 brightness levels, offset'
     bounds = ((0, 1), (0, 1), (0, 1), (0, 512), (0, 512))
 
-    np = 12
+    #np = 12
+    np = 3
     cr = 0.2368
     f = 0.6702
-    iter = 166
+    #iter = 166
+    iter = 1
 
     @staticmethod
     def func(args, container, watermark, default_metrics):
-        def_psnr = default_metrics['psnr']
-        def_bpp = default_metrics['bpp']
+        def_psnr = default_metrics['container psnr']
+        def_bpp = default_metrics['container bpp']
         th = (args[0], args[1], args[2])
         x = int(args[3])
         y = int(args[4])
@@ -358,19 +301,10 @@ class OptIssue9:
 
     @staticmethod
     def get_new_params(result):
-        x = int(result.x[3])
-        y = int(result.x[4])
-        print('threshold: {th[0]:.2f} {th[1]:.2f} {th[2]:.2f}, \n'
-              'offset: ({offset[0]}, {offset[1]}) \n'
-              'func: {f:.2f}'
-              .format(
-                th=(result.x[0], result.x[1], result.x[2]),
-                offset=(x, y),
-                f=result.fun))
-        params = DEFAULT_PARAMS.copy()
-        params['homogeneity_threshold'] = (result.x[0], result.x[1], result.x[2])
-        params['offset'] = (x, y)
-        return params
+        return {
+            'homogeneity_threshold': (result.x[0], result.x[1], result.x[2]),
+            'offset': (int(result.x[3]), int(result.x[4]))
+        }
 
 
 ISSUES = [OptIssue1, OptIssue2, OptIssue3, OptIssue4, OptIssue5, OptIssue6, OptIssue7, OptIssue8, OptIssue9]

@@ -39,10 +39,6 @@ def main():
     embed(params)
 
 
-if __name__ == "__main__":
-    main()
-
-
 def embed(params):
     container = Image.open(params['container'])
     if params['container_size']:
@@ -98,3 +94,7 @@ def save_stages(stages):
         if not os.path.exists(STAGES_DIR):
             os.makedirs(STAGES_DIR)
         img.save(STAGES_DIR + name + '.bmp')
+
+
+if __name__ == "__main__":
+    main()
