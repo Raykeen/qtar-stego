@@ -13,7 +13,7 @@ except:
 logs = listdir('logs')
 enum_logs = [log for log in logs if re.match("de_[_.\w]*.log", log)]
 
-r_filename = r"[\w\\_]*\\([\w_]*).\w*"
+r_filename = r"[\w\\_]*\\([\w_]*)\.\w*"
 r_filenames = """Embedding with default params:
 Embedding """+r_filename+" in "+r_filename
 
