@@ -32,8 +32,8 @@ def main():
     argparser.add_argument('-rw', '--watermark_size', metavar='watermark_size',
                            type=int, nargs=2, default=None,
                            help='resize watermark')
-
-    argparser.add_argument('-ns', '--not-save', action='store_true')
+    argparser.add_argument('-ss', '--save-stages', action='store_true',
+                           help='save stages images in "stages" directory')
     args = argparser.parse_args()
     params = vars(args)
     embed(params)
@@ -59,14 +59,14 @@ def embed(params):
     stego = embed_result.img_stego
     wm = embed_result.img_watermark
 
-    if not params['not_save']:
+    if params['save-stages']:
         save_stages(embed_result.stages_imgs)
 
     with benchmark("extracted in"):
         extract_stages_imgs = qtar.extract(stego, embed_result.key, stages=True)
     extracted_wm = extract_stages_imgs['9-extracted_watermark']
 
-    if not params['not_save']:
+    if params['save-stages']:
         save_stages(extract_stages_imgs)
 
     bpp_ = embed_result.bpp

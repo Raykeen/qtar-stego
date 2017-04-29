@@ -1,3 +1,5 @@
+from copy import copy
+
 from PIL import Image
 from scipy.optimize import differential_evolution
 
@@ -5,6 +7,7 @@ from qtar.core.argparser import argparser
 from qtar.optimization.deissues import ISSUES
 from qtar.cli import embed
 from qtar.utils import benchmark
+from qtar.utils.xlsx import save_de_results
 
 
 DE_INFO_TEMPLATE = """Differential evolution optimization:
@@ -23,6 +26,9 @@ def main():
     issue_descriptions = ['%d: %s' % (i+1, Issue.desc) for i, Issue in enumerate(ISSUES)]
     argparser.add_argument('issue', type=int, default=0,
                            help='0: Run all optimizations\n' + '\n'.join(issue_descriptions))
+    argparser.add_argument('-xls', '--xls_path', metavar='path',
+                           type=str, default=None,
+                           help='save results to xls file')
     argparser.add_argument('-rc', '--container_size', metavar='container_size',
                            type=int, nargs=2, default=None,
                            help='resize container image')
@@ -46,15 +52,15 @@ def run_de(params, Issue):
     watermark = Image.open(params['watermark'])
     if params['watermark_size']:
         watermark = watermark.resize((params['watermark_size'][0], params['watermark_size'][1]), Image.BILINEAR)
-    params['not_save'] = True
+    params['save-stages'] = False
     print('Embedding with default params:')
-    default_metrics = embed(params)
+    def_metrics = embed(params)
 
     de_info = DE_INFO_TEMPLATE.format(i=Issue)
     print(de_info)
 
     with benchmark("optimized in"):
-        de_result = differential_evolution(Issue.func, Issue.bounds, (container, watermark, default_metrics),
+        de_result = differential_evolution(Issue.func, Issue.bounds, (container, watermark, def_metrics),
                                            strategy='rand1bin',
                                            popsize=Issue.np,
                                            mutation=Issue.f,
@@ -73,9 +79,14 @@ def run_de(params, Issue):
 
     print("_" * 40 + '\n')
     print('Embedding with new params:')
-
+    def_params = copy(params)
     params.update(new_params)
-    return embed(params)
+    new_metrics = embed(params)
+
+    if params['xls_path']:
+        save_de_results('xls\\de.xlsx', def_params, new_params, def_metrics, new_metrics)
+
+    return new_metrics
 
 
 if __name__ == "__main__":
