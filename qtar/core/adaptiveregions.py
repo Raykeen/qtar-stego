@@ -4,15 +4,15 @@ from qtar.core.quantizationmatrix import generate_quantization_matrix
 from qtar.core.matrixregion import MatrixRegions
 
 
-def adapt_regions(regions, q_power=None, a_indexes=None):
-    if a_indexes is None:
-        a_indexes = _find_a_indexes(regions, q_power)
-    a_regions = _adapt_by_a_indexes(regions, a_indexes)
-    return a_regions, a_indexes
+def adapt_regions(regions, q_power=None, ar_indexes=None):
+    if ar_indexes is None:
+        ar_indexes = _find_ar_indexes(regions, q_power)
+    ar_regions = _adapt_by_ar_indexes(regions, ar_indexes)
+    return ar_regions, ar_indexes
 
 
-def _find_a_indexes(regions, q_power):
-    a_indexes = list()
+def _find_ar_indexes(regions, q_power):
+    ar_indexes = list()
     for region in regions:
         h, w = region.shape
         if h != w:
@@ -21,24 +21,24 @@ def _find_a_indexes(regions, q_power):
         quantization_matrix = generate_quantization_matrix(size)
         quantized = uint8(region / (quantization_matrix * q_power))
         if quantized[-1, -1] != 0:
-            a_indexes.append(size)
+            ar_indexes.append(size)
             continue
         for xy in range(0, size):
             aregion = quantized[xy:size][xy:size]
             if not aregion.any():
-                a_indexes.append(xy)
+                ar_indexes.append(xy)
                 break
-    return a_indexes
+    return ar_indexes
 
 
-def _adapt_by_a_indexes(regions, a_indexes):
-    a_rects = list()
-    for a_index, rect in zip(a_indexes, regions.rects):
+def _adapt_by_ar_indexes(regions, ar_indexes):
+    ar_rects = list()
+    for ar_index, rect in zip(ar_indexes, regions.rects):
         x0, y0, x1, y1 = rect
-        new_rect = [x0 + a_index, y0 + a_index, x1, y1]
-        a_rects.append(new_rect)
-    a_regions = MatrixRegions(a_rects, regions.matrix)
-    return a_regions
+        new_rect = [x0 + ar_index, y0 + ar_index, x1, y1]
+        ar_rects.append(new_rect)
+    ar_regions = MatrixRegions(ar_rects, regions.matrix)
+    return ar_regions
 
 
 class RegionShapeError(Exception):

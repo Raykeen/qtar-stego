@@ -4,6 +4,7 @@ from PIL import Image
 
 from qtar.core.qtar import QtarStego
 from qtar.core.argparser import argparser
+from qtar.core.container import Key
 from qtar.optimization.metrics import psnr, bcr
 from qtar.utils import benchmark
 
@@ -32,8 +33,11 @@ def main():
     argparser.add_argument('-rw', '--watermark_size', metavar='watermark_size',
                            type=int, nargs=2, default=None,
                            help='resize watermark')
-    argparser.add_argument('-ss', '--save-stages', action='store_true',
+    argparser.add_argument('-ss', '--save_stages', action='store_true',
                            help='save stages images in "stages" directory')
+    argparser.add_argument('-key', '--key', metavar='path',
+                           type=str, default=None,
+                           help='save key to file')
     args = argparser.parse_args()
     params = vars(args)
     embed(params)
@@ -58,15 +62,20 @@ def embed(params):
     container = embed_result.img_container
     stego = embed_result.img_stego
     wm = embed_result.img_watermark
+    key = embed_result.key
 
-    if params['save-stages']:
+    if params['save_stages']:
         save_stages(embed_result.stages_imgs)
 
+    if params['key']:
+        key.save(params['key'])
+        key = Key.open(params['key'])
+
     with benchmark("extracted in"):
-        extract_stages_imgs = qtar.extract(stego, embed_result.key, stages=True)
+        extract_stages_imgs = qtar.extract(stego, key, stages=True)
     extracted_wm = extract_stages_imgs['9-extracted_watermark']
 
-    if params['save-stages']:
+    if params['save_stages']:
         save_stages(extract_stages_imgs)
 
     bpp_ = embed_result.bpp

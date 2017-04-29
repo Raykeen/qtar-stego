@@ -52,7 +52,7 @@ def run_de(params, Issue):
     watermark = Image.open(params['watermark'])
     if params['watermark_size']:
         watermark = watermark.resize((params['watermark_size'][0], params['watermark_size'][1]), Image.BILINEAR)
-    params['save-stages'] = False
+    params['save_stages'] = False
     print('Embedding with default params:')
     def_metrics = embed(params)
 

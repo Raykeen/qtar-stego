@@ -1,3 +1,5 @@
+from copy import copy
+
 import numpy as np
 
 from qtar.core.matrixregion import MatrixRegions
@@ -41,15 +43,23 @@ class QtNode:
 
 
 class ImageQT(MatrixRegions):
-    def __init__(self, matrix, min_size, max_size, threshold):
+    def __init__(self, matrix, min_size=None, max_size=None, threshold=None, key=None):
         super().__init__([], matrix)
         self.threshold = threshold
         self.min_size = min_size
         self.max_size = max_size
         self.max_depth = 0
+        self.key = key
         self.all_nodes = []
         self.leaves = []
-        self.__build_tree(QtNode(None, (0, 0, matrix.shape[1], matrix.shape[0])))
+
+        if key is None:
+            self.key = []
+            self.__build_tree(QtNode(None, (0, 0, matrix.shape[1], matrix.shape[0])))
+        else:
+            self.min_size = 0
+            self.max_size = 0
+            self.__build_tree_from_key(QtNode(None, (0, 0, matrix.shape[1], matrix.shape[0])), copy(key))
         self.rects = [leave.rect for leave in self.leaves]
 
     def __build_tree(self, node):
@@ -60,12 +70,30 @@ class ImageQT(MatrixRegions):
         if (not too_big and self.__spans_homogeneity(node.rect)) or too_small:
             if node.depth > self.max_depth:
                 self.max_depth = node.depth
+            self.key.append(False)
             self.leaves.append(node)
             return
 
+        self.key.append(True)
         children = node.subdivide()
         for child in children:
             self.__build_tree(child)
+
+    def __build_tree_from_key(self, node, key):
+        subivide = key.pop(0)
+        self.all_nodes.append(node)
+        if subivide:
+            children = node.subdivide()
+            for child in children:
+                self.__build_tree_from_key(child, key)
+        else:
+            if node.depth > self.max_depth:
+                self.max_depth = node.depth
+            if node.size > self.max_size:
+                self.max_size = node.size
+            if node.size < self.min_size:
+                self.min_size = node.size
+            self.leaves.append(node)
 
     def __spans_homogeneity(self, rect):
         region = self.get_region(rect)
@@ -82,3 +110,17 @@ class ImageQT(MatrixRegions):
                 if brightness <= bright_type_max:
                     return homogeneity < self.threshold[i] * 256
             return homogeneity < self.threshold[-1] * 256
+
+
+def parse_qt_key(key, block_count=1, result_key=None):
+    if result_key is None:
+        result_key = []
+
+    subdivide = bool(key.pop(0))
+    result_key.append(subdivide)
+    if subdivide:
+        block_count = block_count - 1
+        for i in range(4):
+            result_key, block_count = parse_qt_key(key, block_count + 1, result_key)
+
+    return result_key, block_count

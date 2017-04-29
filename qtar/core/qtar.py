@@ -44,19 +44,21 @@ class QtarStego:
         chs_container = self.__convert_image_to_chs(img_container)
         container_image_mode = img_container.mode
 
-        key = Key(params=self.params)
+        key = Key(ch_scale=self.ch_scale,
+                  offset=self.offset)
         container = Container(key=key)
 
         for ch, ch_image in enumerate(chs_container):
             regions = self.__divide_into_regions(ch_image)
+            qt_key = regions.key
             regions_dct = self.__dct_regions(regions)
-            regions_embed, a_indexes = self.__define_regions_to_embed(regions_dct)
+            regions_embed, ar_indexes = self.__define_regions_to_embed(regions_dct)
 
             container.chs_regions.append(regions)
             container.chs_regions_dct.append(regions_dct)
             container.chs_regions_dct_embed.append(regions_embed)
-            key.chs_rects.append(regions.rects)
-            key.chs_a_indexes.append(a_indexes)
+            key.chs_qt_key.append(qt_key)
+            key.chs_ar_key.append(ar_indexes)
 
         available_space = container.available_space
         wm_shape = img_watermark.size
@@ -107,9 +109,13 @@ class QtarStego:
             image = image.convert(mode)
         return image
 
-    def __divide_into_regions(self, chs_image):
-        size = min(self.max_block_size, chs_image.shape[0])
-        return ImageQT(chs_image, self.min_block_size, size, self.homogeneity_threshold)
+    def __divide_into_regions(self, ch_image, key=None):
+        if key is None:
+            size = min(self.max_block_size, ch_image.shape[0])
+            regions = ImageQT(ch_image, self.min_block_size, size, self.homogeneity_threshold)
+        else:
+            regions = ImageQT(ch_image, key=key)
+        return regions
 
     @staticmethod
     def __dct_regions(regions, inverse=False):
@@ -165,12 +171,12 @@ class QtarStego:
         chs_regions_extract = []
         chs_watermark = []
         for ch, ch_stego in enumerate(chs_stego):
-            rects = key.chs_rects[ch]
-            a_indexes = key.chs_a_indexes[ch]
+            qt_key = key.chs_qt_key[ch]
+            ar_indexes = key.chs_ar_key[ch]
             wm_shape = key.wm_shape
-            regions = MatrixRegions(rects, ch_stego)
+            regions = self.__divide_into_regions(ch_stego, qt_key)
             regions_dct = self.__dct_regions(regions)
-            regions_extract = self.__define_regions_to_extract(regions_dct, a_indexes)
+            regions_extract = self.__define_regions_to_extract(regions_dct, ar_indexes)
             ch_watermark = self.__extract_from_regions(regions_extract, wm_shape)
             chs_regions.append(regions)
             chs_regions_extract.append(regions_extract)
@@ -189,8 +195,8 @@ class QtarStego:
             return self.__chs_to_image(chs_watermark, stego_image_mode)
 
     @staticmethod
-    def __define_regions_to_extract(regions, a_indexes):
-        regions_extract, a_indexes = adapt_regions(regions, a_indexes=a_indexes)
+    def __define_regions_to_extract(regions, ar_indexes):
+        regions_extract, ar_indexes = adapt_regions(regions, ar_indexes=ar_indexes)
         return regions_extract
 
     def __extract_from_regions(self, regions, wm_shape):
