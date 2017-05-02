@@ -7,6 +7,7 @@ from qtar.core.argparser import argparser
 from qtar.core.container import Key
 from qtar.optimization.metrics import psnr, bcr
 from qtar.utils import benchmark
+from qtar.utils.stamp import stamp_image
 
 STAGES_DIR = "stages\\"
 EMBEDDING_INFO_TEMPLATE = """Embedding {watermark} in {container} using QTAR
@@ -25,6 +26,14 @@ BPP:     {bpp:.4f}
 BCR:     {bcr:.4f}
 WM_SIZE: {width}x{height}"""
 
+STAMP_TEMPLATE = """threshold:  {homogeneity_threshold}
+block size: {min_block_size}px - {max_block_size}px
+q power:    {quant_power:.2f}
+k:          {ch_scale:.2f}
+offset:     {offset[0]}px {offset[1]}px
+BPP:        {bpp:.4f}
+PSNR:       {psnr:.4f}"""
+
 
 def main():
     argparser.add_argument('-rc', '--container_size', metavar='container_size',
@@ -35,6 +44,8 @@ def main():
                            help='resize watermark')
     argparser.add_argument('-ss', '--save_stages', action='store_true',
                            help='save stages images in "stages" directory')
+    argparser.add_argument('-st', '--stamp_stages', action='store_true',
+                           help='stamp info on stages images')
     argparser.add_argument('-key', '--key', metavar='path',
                            type=str, default=None,
                            help='save key to file')
@@ -64,8 +75,15 @@ def embed(params):
     wm = embed_result.img_watermark
     key = embed_result.key
 
+    bpp_ = embed_result.bpp
+    psnr_ = psnr(container, stego)
+
     if params['save_stages']:
-        save_stages(embed_result.stages_imgs)
+        save_stages(embed_result.stages_imgs, STAMP_TEMPLATE.format(
+            **params,
+            psnr=psnr_,
+            bpp=bpp_
+        ) if params['stamp_stages'] else None)
 
     if params['key']:
         key.save(params['key'])
@@ -76,10 +94,12 @@ def embed(params):
     extracted_wm = extract_stages_imgs['9-extracted_watermark']
 
     if params['save_stages']:
-        save_stages(extract_stages_imgs)
+        save_stages(extract_stages_imgs, STAMP_TEMPLATE.format(
+            **params,
+            psnr=psnr_,
+            bpp=bpp_
+        ) if params['stamp_stages'] else None)
 
-    bpp_ = embed_result.bpp
-    psnr_ = psnr(container, stego)
     bcr_ = bcr(wm, extracted_wm)
 
     metrics_info = METRICS_INFO_TEMPLATE.format(
@@ -98,10 +118,12 @@ def embed(params):
     }
 
 
-def save_stages(stages):
+def save_stages(stages, stamp_txt=None):
     for name, img in stages.items():
         if not os.path.exists(STAGES_DIR):
             os.makedirs(STAGES_DIR)
+        if stamp_txt is not None:
+            img = stamp_image(img, stamp_txt)
         img.save(STAGES_DIR + name + '.bmp')
 
 

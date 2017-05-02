@@ -268,12 +268,10 @@ class OptIssue9:
            'params: threshold for 3 brightness levels, offset'
     bounds = ((0, 1), (0, 1), (0, 1), (0, 512), (0, 512))
 
-    #np = 12
-    np = 3
+    np = 12
     cr = 0.2368
     f = 0.6702
-    #iter = 166
-    iter = 1
+    iter = 166
 
     @staticmethod
     def func(args, container, watermark, default_metrics):
