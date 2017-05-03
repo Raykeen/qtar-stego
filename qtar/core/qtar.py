@@ -104,7 +104,7 @@ class QtarStego:
             image = image.resize(shape, Image.BILINEAR)
         if offset is not None:
             x, y = offset
-            image = ImageChops.offset(image, x, y)
+            image = ImageChops.offset(image, -x, -y)
         if mode is not None:
             image = image.convert(mode)
         return image

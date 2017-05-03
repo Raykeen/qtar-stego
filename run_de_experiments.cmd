@@ -1,6 +1,6 @@
 @ECHO OFF
 setlocal
 for /F "tokens=1,2*" %%i in (experiments\de_experiments.txt) do (
-    echo Run de %1 experiments %%j in %%i
-    start cmd /k "echo Run de experiment %%j in %%i & env\Scripts\python.exe -m qtar.optimization.de images\%%i images\%%j %1 -xls xls\de.xlsx > logs\de_%%j_in_%%i.log"
+    echo Run de %1 experiments %%~nj in %%~ni
+    start cmd /k "echo Run de experiment %%~nj in %%~ni & env\Scripts\python.exe -m qtar.optimization.de images\%%i images\%%j %1 -xls xls\de.xlsx > logs\de_%%~nj_in_%%~ni.log"
 )

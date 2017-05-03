@@ -1,49 +1,58 @@
-import argparse
-
 from PIL import Image
+
 from qtar.optimization.metrics import psnr, bcr
-
 from qtar.core.qtar import QtarStego, DEFAULT_PARAMS
-
-
-def enumerate_coordinates(img_path, watermark_path):
-    img = Image.open(img_path).resize((256, 256), Image.BILINEAR)
-    watermark = Image.open(watermark_path).resize((256, 256), Image.BILINEAR)
-    print("{0}_in_{1}".format(watermark_path.split('\\')[-1].replace('.png', ''),
-                              img_path.split('\\')[-1].replace('.png', '')))
-    params = DEFAULT_PARAMS
-    params['quant_power'] = 10
-    for y in range(0, 3):
-        for x in range(0, 3):
-            MAXBPP = len(img.getbands()) * 8
-            _PSNR = 1
-            _BCR = 0
-            _Cap = 0
-            try:
-                params['offset'] = (x, y)
-                qtar = QtarStego.from_dict(params)
-
-                key_data = qtar.embed(img, watermark)
-                container_image = qtar.get_container_image()
-                stego_image = qtar.get_stego_image()
-                wm = qtar.get_wm()
-                extracted_wm = qtar.extract(stego_image, key_data)
-                _PSNR = psnr(container_image, stego_image)
-                _BCR = bcr(wm, extracted_wm)
-                _Cap = qtar.get_fact_bpp()
-                print('{0} {1} {2:.4f} {3:.4f} {4:.4f}'.format(x, y, _PSNR, _BCR, _Cap))
-            except:
-                print('{0} {1} {2:.4f} {3:.4f} {4:.4f}'.format(x, y, 0, 0, 0))
+from qtar.core.argparser import argparser
 
 
 def main():
-    argparser = argparse.ArgumentParser()
-    argparser.add_argument('container', type=str,
-                           help='container image')
-    argparser.add_argument('watermark', type=str,
-                           help='image to embed into container')
+    argparser.add_argument('-rc', '--container_size', metavar='container_size',
+                           type=int, nargs=2, default=None,
+                           help='resize container image')
+    argparser.add_argument('-rw', '--watermark_size', metavar='watermark_size',
+                           type=int, nargs=2, default=None,
+                           help='resize watermark')
     args = argparser.parse_args()
-    enumerate_coordinates(args.container, args.watermark)
+    params = vars(args)
+    enumerate_offset(params)
+
+
+def enumerate_offset(params):
+    container = Image.open(params['container'])
+    if params['container_size']:
+        container = container.resize((params['container_size'][0], params['container_size'][1]), Image.BILINEAR)
+    watermark = Image.open(params['watermark'])
+    if params['watermark_size']:
+        watermark = watermark.resize((params['watermark_size'][0], params['watermark_size'][1]), Image.BILINEAR)
+
+    print("{0}_in_{1}".format(params['watermark'].split('\\')[-1].replace('.png', ''),
+                              params['container'].split('\\')[-1].replace('.png', '')))
+
+    w, h = container.size
+
+    for y in range(0, h):
+        for x in range(0, w):
+            MAXBPP = len(container.getbands()) * 8
+            psnr_ = 1
+            bcr_ = 0
+            bpp_ = 0
+            params['offset'] = (x, y)
+            qtar = QtarStego.from_dict(params)
+
+            try:
+                embed_result = qtar.embed(container, watermark)
+            except:
+                print('{0} {1} {2} {3} {4}'.format(x, y, 0, 0, 0))
+
+            container = embed_result.img_container
+            stego = embed_result.img_stego
+            wm = embed_result.img_watermark
+            key = embed_result.key
+            ext_wm = qtar.extract(stego, key)
+            psnr_ = psnr(container, stego)
+            bcr_ = bcr(wm, ext_wm)
+            bpp_ = embed_result.bpp
+            print('{0} {1} {2} {3} {4}'.format(x, y, psnr_, bcr_, bpp_))
 
 
 if __name__ == "__main__":

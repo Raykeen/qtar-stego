@@ -25,7 +25,6 @@ PSNR:    {psnr:.4f}
 BPP:     {bpp:.4f}
 BCR:     {bcr:.4f}
 WM_SIZE: {width}x{height}"""
-
 STAMP_TEMPLATE = """threshold:  {homogeneity_threshold}
 block size: {min_block_size}px - {max_block_size}px
 q power:    {quant_power:.2f}

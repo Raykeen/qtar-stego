@@ -1,11 +1,9 @@
-images/
-stages/
 .idea/
 env/
-logs/
-xls/
 __pycache__/
 *.exe
 *.xlsx
 *.log
 *.qtarkey
+*.png
+*.bmp
