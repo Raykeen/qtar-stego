@@ -46,7 +46,8 @@ class QtarStego:
         container_image_mode = img_container.mode
 
         key = Key(ch_scale=self.ch_scale,
-                  offset=self.offset)
+                  offset=self.offset,
+                  container_shape=(size, size))
         container = Container(key=key)
 
         chs_regions = []
