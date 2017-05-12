@@ -9,6 +9,7 @@ from qtar.cli import embed
 from qtar.utils import benchmark
 from qtar.utils.xlsx import save_de_results
 
+DE_RESULT_XLS = "xls\\qtarpm\\de.xlsx"
 
 DE_INFO_TEMPLATE = """Differential evolution optimization:
 DE params:
@@ -87,7 +88,7 @@ def run_de(params, Issue):
     new_metrics = embed(params)
 
     if params['xls_path']:
-        save_de_results('xls\\de.xlsx', def_params, new_params, def_metrics, new_metrics)
+        save_de_results(DE_RESULT_XLS, def_params, new_params, def_metrics, new_metrics)
 
     return new_metrics
 

@@ -90,7 +90,7 @@ def embed(params):
 
     with benchmark("extracted in"):
         extract_stages_imgs = qtar.extract(stego, key, stages=True)
-    extracted_wm = extract_stages_imgs['11-extracted_watermark']
+    extracted_wm = extract_stages_imgs['9-extracted_watermark']
 
     if params['save_stages']:
         save_stages(extract_stages_imgs, STAMP_TEMPLATE.format(
