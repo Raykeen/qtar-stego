@@ -305,4 +305,42 @@ class OptIssue9:
         }
 
 
-ISSUES = [OptIssue1, OptIssue2, OptIssue3, OptIssue4, OptIssue5, OptIssue6, OptIssue7, OptIssue8, OptIssue9]
+class OptIssue10:
+    desc = 'Issue 10\n' \
+           'func: -((psnr - def_psnr) / def_psnr + (bpp - def_bpp) / def_bpp)\n' \
+           'params: threshold for 3 brightness levels'
+    bounds = ((0, 1), (0, 1), (0, 1))
+
+    np = 17
+    cr = 0.7122
+    f = 0.6301
+    iter = 60
+
+    @staticmethod
+    def func(args, container, watermark, default_metrics):
+        def_psnr = default_metrics['container psnr']
+        def_bpp = default_metrics['container bpp']
+        th = (args[0], args[1], args[2])
+        qtar = QtarStego(homogeneity_threshold=th)
+
+        try:
+            embed_result = qtar.embed(container, watermark)
+        except:
+            return 0
+        container_image = embed_result.img_container
+        stego_image = embed_result.img_stego
+        psnr_ = psnr(container_image, stego_image)
+        bpp_ = embed_result.bpp
+
+        if psnr_ < def_psnr or bpp_ < def_bpp:
+            return 0
+
+        return -((psnr_ - def_psnr) / def_psnr + (bpp_ - def_bpp) / def_bpp)
+
+    @staticmethod
+    def get_new_params(result):
+        return {
+            'homogeneity_threshold': (result.x[0], result.x[1], result.x[2])
+        }
+
+ISSUES = [OptIssue1, OptIssue2, OptIssue3, OptIssue4, OptIssue5, OptIssue6, OptIssue7, OptIssue8, OptIssue9, OptIssue10]

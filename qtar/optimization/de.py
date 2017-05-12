@@ -35,6 +35,9 @@ def main():
     argparser.add_argument('-rw', '--watermark_size', metavar='watermark_size',
                            type=int, nargs=2, default=None,
                            help='resize watermark')
+    argparser.add_argument('-key', '--key', metavar='path',
+                           type=str, default=None,
+                           help='save key to file')
     args = argparser.parse_args()
     params = vars(args)
 
