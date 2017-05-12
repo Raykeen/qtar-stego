@@ -10,3 +10,13 @@ mandril_g.png peppers_g.png
 peppers_g.png pirate_g.png
 pirate_g.png walkbridge_g.png
 walkbridge_g.png cameraman_g.png
+arctichare_g.png barbara_g.png
+barbara_g.png blonde_g.png
+blonde_g.png boat_g.png
+boat_g.png cat_g.png
+cat_g.png darkhair_g.png
+darkhair_g.png fruits_g.png
+fruits_g.png house_g.png
+house_g.png jellyfish.png
+jellyfish.png sails_g.png
+sails_g.png arctichare_g.png
