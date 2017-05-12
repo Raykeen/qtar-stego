@@ -70,7 +70,7 @@ def run_de(params, Issue):
                                            recombination=Issue.cr,
                                            tol=0,
                                            maxiter=Issue.iter)
-
+    print(de_result.nit)
     new_params = Issue.get_new_params(de_result)
 
     print("\nResult:")
