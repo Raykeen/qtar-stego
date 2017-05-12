@@ -10,6 +10,7 @@ from scipy.fftpack import dct, idct
 
 from qtar.core.imageqt import ImageQT
 from qtar.core.adaptiveregions import adapt_regions
+from qtar.core.permutation import build_qt_permutation, permutate, reverse_permutation
 from qtar.core.container import Container, Key
 from qtar.core.matrixregion import MatrixRegions, draw_borders_on
 
@@ -48,17 +49,23 @@ class QtarStego:
                   offset=self.offset)
         container = Container(key=key)
 
+        chs_regions = []
+        chs_regions_pm = []
         for ch, ch_image in enumerate(chs_container):
             regions = self.__divide_into_regions(ch_image)
             qt_key = regions.key
-            regions_dct = self.__dct_regions(regions)
+            pm_key = build_qt_permutation(regions)
+            regions_pm = self.__permutate(regions, pm_key)
+            regions_dct = self.__dct_regions(regions_pm)
             regions_embed, ar_indexes = self.__define_regions_to_embed(regions_dct)
 
-            container.chs_regions.append(regions)
+            chs_regions.append(regions)
+            chs_regions_pm.append(regions_pm)
             container.chs_regions_dct.append(regions_dct)
             container.chs_regions_dct_embed.append(regions_embed)
             key.chs_qt_key.append(qt_key)
             key.chs_ar_key.append(ar_indexes)
+            key.chs_pm_key.append(pm_key)
 
         available_space = container.available_space
         wm_shape = img_watermark.size
@@ -71,12 +78,15 @@ class QtarStego:
 
         chs_stego_img = []
         chs_embedded_dct_regions = []
-        for regions_dct, embed_dct_regions, wm_ch in zip(container.chs_regions_dct,
-                                                         container.chs_regions_dct_embed,
-                                                         chs_watermark):
+        for regions_dct, embed_dct_regions, wm_ch, pm_key in \
+                zip(container.chs_regions_dct,
+                    container.chs_regions_dct_embed,
+                    chs_watermark,
+                    key.chs_pm_key):
             embedded_dct_regions = self.__embed_in_regions(embed_dct_regions, wm_ch)
             idct_regions = MatrixRegions(regions_dct.rects, embedded_dct_regions.matrix)
-            stego_img_regions = self.__idct_regions(idct_regions)
+            idct_regions = self.__idct_regions(idct_regions)
+            stego_img_regions = self.__reverse_permutate(idct_regions, pm_key)
             chs_stego_img.append(stego_img_regions.matrix)
             chs_embedded_dct_regions.append(embedded_dct_regions)
 
@@ -87,14 +97,15 @@ class QtarStego:
         if stages:
             stages_imgs = {
                 "1-container": img_container,
-                "2-quad_tree": self.__regions_to_image(container.chs_regions, container_image_mode,
+                "2-quad_tree": self.__regions_to_image(chs_regions, container_image_mode,
                                                        borders=True, only_right_bottom=True),
-                "3-adaptive_regions": self.__regions_to_image(container.chs_regions_dct_embed, container_image_mode,
+                "3-permutation": self.__regions_to_image(chs_regions_pm, container_image_mode),
+                "4-adaptive_regions": self.__regions_to_image(container.chs_regions_dct_embed, container_image_mode,
                                                               borders=True, factor=10),
-                "4-dct": self.__regions_to_image(chs_embedded_dct_regions, container_image_mode,
+                "5-dct": self.__regions_to_image(chs_embedded_dct_regions, container_image_mode,
                                                  factor=10),
-                "5-watermark": img_watermark,
-                "6-stego_image": img_stego
+                "6-watermark": img_watermark,
+                "7-stego_image": img_stego
             }
         return StegoEmbedResult(img_stego, key, container.fact_bpp, img_container, img_watermark,  stages_imgs)
 
@@ -115,6 +126,18 @@ class QtarStego:
             regions = ImageQT(ch_image, self.min_block_size, size, self.homogeneity_threshold)
         else:
             regions = ImageQT(ch_image, key=key)
+        return regions
+
+    @staticmethod
+    def __permutate(qt_regions, permutation):
+        pm_matrix = permutate(qt_regions.matrix, permutation)
+        pm_regions = MatrixRegions(qt_regions.rects, pm_matrix)
+        return pm_regions
+
+    @staticmethod
+    def __reverse_permutate(pm_regions, permutation):
+        matrix = reverse_permutation(pm_regions.matrix, permutation)
+        regions = MatrixRegions(pm_regions.rects, matrix)
         return regions
 
     @staticmethod
@@ -168,27 +191,32 @@ class QtarStego:
         stego_image_mode = img_stego.mode
 
         chs_regions = []
+        chs_regions_pm = []
         chs_regions_extract = []
         chs_watermark = []
         for ch, ch_stego in enumerate(chs_stego):
             qt_key = key.chs_qt_key[ch]
             ar_indexes = key.chs_ar_key[ch]
+            pm_key = key.chs_pm_key[ch]
             wm_shape = key.wm_shape
             regions = self.__divide_into_regions(ch_stego, qt_key)
-            regions_dct = self.__dct_regions(regions)
+            regions_pm = self.__permutate(regions, pm_key)
+            regions_dct = self.__dct_regions(regions_pm)
             regions_extract = self.__define_regions_to_extract(regions_dct, ar_indexes)
             ch_watermark = self.__extract_from_regions(regions_extract, wm_shape)
             chs_regions.append(regions)
+            chs_regions_pm.append(regions_pm)
             chs_regions_extract.append(regions_extract)
             chs_watermark.append(ch_watermark)
 
         if stages:
             stages_imgs = {
-                "7-quad_tree":  self.__regions_to_image(chs_regions, stego_image_mode,
+                "8-quad_tree":  self.__regions_to_image(chs_regions, stego_image_mode,
                                                         borders=True, only_right_bottom=True),
-                "8-adaptive_regions": self.__regions_to_image(chs_regions_extract, stego_image_mode,
+                "9-permutation": self.__regions_to_image(chs_regions_pm, stego_image_mode),
+                "10-adaptive_regions": self.__regions_to_image(chs_regions_extract, stego_image_mode,
                                                               borders=True, factor=10),
-                "9-extracted_watermark": self.__chs_to_image(chs_watermark, stego_image_mode)
+                "11-extracted_watermark": self.__chs_to_image(chs_watermark, stego_image_mode)
             }
             return stages_imgs
         else:

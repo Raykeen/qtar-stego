@@ -52,14 +52,15 @@ class ImageQT(MatrixRegions):
         self.key = key
         self.all_nodes = []
         self.leaves = []
+        self.root_node = QtNode(None, (0, 0, matrix.shape[1], matrix.shape[0]))
 
         if key is None:
             self.key = []
-            self.__build_tree(QtNode(None, (0, 0, matrix.shape[1], matrix.shape[0])))
+            self.__build_tree(self.root_node)
         else:
             self.min_size = 0
             self.max_size = 0
-            self.__build_tree_from_key(QtNode(None, (0, 0, matrix.shape[1], matrix.shape[0])), copy(key))
+            self.__build_tree_from_key(self.root_node, copy(key))
         self.rects = [leave.rect for leave in self.leaves]
 
     def __build_tree(self, node):
