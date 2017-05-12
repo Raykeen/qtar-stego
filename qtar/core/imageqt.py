@@ -47,7 +47,7 @@ class QtNode:
 class ImageQT(MatrixRegions):
     def __init__(self, matrix, min_size=None, max_size=None, threshold=None, key=None, permutation=None):
         super().__init__([], matrix)
-        self.original_mx = matrix
+        self.original_mx = copy(matrix)
         self.threshold = threshold
         self.min_size = min_size
         self.max_size = max_size
@@ -62,7 +62,6 @@ class ImageQT(MatrixRegions):
             self.key = []
             self.permutation = np.arange(matrix.size).reshape(matrix.shape)
             self.__build_tree(self.root_node)
-            self.matrix = permutate(self.matrix, self.permutation)
         else:
             self.min_size = 0
             self.max_size = 0
@@ -109,7 +108,7 @@ class ImageQT(MatrixRegions):
             self.leaves.append(node)
 
     def __spans_homogeneity(self, rect):
-        region = self.__get_pm_region(rect)
+        region = self.get_region(rect)
         max_value = np.amax(region)
         min_value = np.amin(region)
         homogeneity = max_value - min_value
@@ -147,12 +146,9 @@ class ImageQT(MatrixRegions):
         perm_region = np.concatenate((top, bottom), axis=0)
         perm_regions.set_region(rect, perm_region)
 
-    def __get_pm_region(self, rect):
-        perm_regions = MatrixRegions([], self.permutation)
-        perm = perm_regions.get_region(rect)
-        region_flat = [self.original_mx.flat[p] for p in perm]
-        region = np.array(region_flat).reshape(perm.shape)
-        return region
+        region_flat = [self.original_mx.flat[p] for p in perm_region]
+        region = np.array(region_flat).reshape(perm_region.shape)
+        self.set_region(rect, region)
 
 
 def parse_qt_key(key, block_count=1, result_key=None):
