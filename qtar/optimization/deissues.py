@@ -311,10 +311,10 @@ class OptIssue10:
            'params: threshold for 3 brightness levels'
     bounds = ((0, 1), (0, 1), (0, 1))
 
-    np = 17
-    cr = 0.7122
-    f = 0.6301
-    iter = 60
+    np = 12
+    cr = 0.2368
+    f = 0.6702
+    iter = 166
 
     @staticmethod
     def func(args, container, watermark, default_metrics):
@@ -323,10 +323,7 @@ class OptIssue10:
         th = (args[0], args[1], args[2])
         qtar = QtarStego(homogeneity_threshold=th)
 
-        try:
-            embed_result = qtar.embed(container, watermark)
-        except:
-            return 0
+        embed_result = qtar.embed(container, watermark)
         container_image = embed_result.img_container
         stego_image = embed_result.img_stego
         psnr_ = psnr(container_image, stego_image)

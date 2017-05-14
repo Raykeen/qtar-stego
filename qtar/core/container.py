@@ -65,7 +65,6 @@ class Container:
         self.chs_regions_dct_embed = chs_regions_dct_embed or []
         self.key = key
 
-
     @property
     def size(self):
         return len(self.chs_regions_dct[0].matrix)

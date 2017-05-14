@@ -36,9 +36,6 @@ def main():
     argparser.add_argument('-rw', '--watermark_size', metavar='watermark_size',
                            type=int, nargs=2, default=None,
                            help='resize watermark')
-    argparser.add_argument('-key', '--key', metavar='path',
-                           type=str, default=None,
-                           help='save key to file')
     args = argparser.parse_args()
     params = vars(args)
 
@@ -57,6 +54,7 @@ def run_de(params, Issue):
     if params['watermark_size']:
         watermark = watermark.resize((params['watermark_size'][0], params['watermark_size'][1]), Image.BILINEAR)
     params['save_stages'] = False
+    params['key'] = None
     print('Embedding with default params:')
     def_metrics = embed(params)
 
@@ -71,7 +69,7 @@ def run_de(params, Issue):
                                            recombination=Issue.cr,
                                            tol=0,
                                            maxiter=Issue.iter)
-
+    print(de_result.nit)
     new_params = Issue.get_new_params(de_result)
 
     print("\nResult:")
