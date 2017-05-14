@@ -51,20 +51,14 @@ class Key:
 
 
 class Container:
-    def __init__(self, chs_regions=None, chs_regions_dct=None, chs_regions_dct_embed=None, key=Key()):
-        self.chs_regions = chs_regions or []
+    def __init__(self, chs_regions_dct=None, chs_regions_dct_embed=None, key=Key()):
         self.chs_regions_dct = chs_regions_dct or []
         self.chs_regions_dct_embed = chs_regions_dct_embed or []
         self.key = key
 
     @property
-    def chs_image(self):
-        return [regions.matrix
-                for regions in self.chs_regions]
-
-    @property
     def size(self):
-        return len(self.chs_image[0])
+        return len(self.chs_regions_dct[0].matrix)
 
     @property
     def chs_dct_img(self):
@@ -86,6 +80,6 @@ class Container:
     @property
     def fact_bpp(self):
         wm_w, wm_h = self.key.wm_shape
-        ch_count = len(self.chs_image)
+        ch_count = len(self.chs_regions_dct)
         return (8 * ch_count * wm_w * wm_h) / self.size**2
 

@@ -48,13 +48,14 @@ class QtarStego:
                   offset=self.offset)
         container = Container(key=key)
 
+        chs_regions = []
         for ch, ch_image in enumerate(chs_container):
             regions = self.__divide_into_regions(ch_image)
             qt_key = regions.key
             regions_dct = self.__dct_regions(regions)
             regions_embed, ar_indexes = self.__define_regions_to_embed(regions_dct)
 
-            container.chs_regions.append(regions)
+            chs_regions.append(regions)
             container.chs_regions_dct.append(regions_dct)
             container.chs_regions_dct_embed.append(regions_embed)
             key.chs_qt_key.append(qt_key)
@@ -87,7 +88,7 @@ class QtarStego:
         if stages:
             stages_imgs = {
                 "1-container": img_container,
-                "2-quad_tree": self.__regions_to_image(container.chs_regions, container_image_mode,
+                "2-quad_tree": self.__regions_to_image(chs_regions, container_image_mode,
                                                        borders=True, only_right_bottom=True),
                 "3-adaptive_regions": self.__regions_to_image(container.chs_regions_dct_embed, container_image_mode,
                                                               borders=True, factor=10),

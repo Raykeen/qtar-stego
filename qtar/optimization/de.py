@@ -9,6 +9,7 @@ from qtar.cli import embed
 from qtar.utils import benchmark
 from qtar.utils.xlsx import save_de_results
 
+DE_RESULT_XLS = "xls\\de.xlsx"
 
 DE_INFO_TEMPLATE = """Differential evolution optimization:
 DE params:
@@ -35,9 +36,6 @@ def main():
     argparser.add_argument('-rw', '--watermark_size', metavar='watermark_size',
                            type=int, nargs=2, default=None,
                            help='resize watermark')
-    argparser.add_argument('-key', '--key', metavar='path',
-                           type=str, default=None,
-                           help='save key to file')
     args = argparser.parse_args()
     params = vars(args)
 
@@ -56,6 +54,7 @@ def run_de(params, Issue):
     if params['watermark_size']:
         watermark = watermark.resize((params['watermark_size'][0], params['watermark_size'][1]), Image.BILINEAR)
     params['save_stages'] = False
+    params['key'] = None
     print('Embedding with default params:')
     def_metrics = embed(params)
 
@@ -87,7 +86,7 @@ def run_de(params, Issue):
     new_metrics = embed(params)
 
     if params['xls_path']:
-        save_de_results('xls\\de.xlsx', def_params, new_params, def_metrics, new_metrics)
+        save_de_results(DE_RESULT_XLS, def_params, new_params, def_metrics, new_metrics)
 
     return new_metrics
 
