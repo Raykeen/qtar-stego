@@ -1,4 +1,5 @@
 from math import sqrt
+from copy import copy
 
 from numpy import array
 
@@ -16,8 +17,10 @@ class OptIssue1:
     iter = 60
 
     @staticmethod
-    def func(threshold, container, watermark, default_metrics):
-        qtar = QtarStego(threshold)
+    def func(threshold, container, watermark, params, default_metrics):
+        params = copy(params)
+        params['homogeneity_threshold'] = threshold
+        qtar = QtarStego.from_dict(threshold)
         embed_result = qtar.embed(container, watermark)
         container = embed_result.img_container
         stego = embed_result.img_stego
@@ -38,8 +41,10 @@ class OptIssue2:
     iter = 60
 
     @staticmethod
-    def func(threshold, container, watermark, default_metrics):
-        qtar = QtarStego(threshold)
+    def func(threshold, container, watermark, params, default_metrics):
+        params = copy(params)
+        params['homogeneity_threshold'] = threshold
+        qtar = QtarStego.from_dict(params)
         embed_result = qtar.embed(container, watermark)
         watermark = embed_result.img_watermark
         extracted_wm = qtar.extract(embed_result.img_stego, embed_result.key)
@@ -60,8 +65,10 @@ class OptIssue3:
     iter = 40
 
     @staticmethod
-    def func(offset, container, watermark, default_metrics):
-        qtar = QtarStego(offset=array(offset).astype(int))
+    def func(offset, container, watermark, params, default_metrics):
+        params = copy(params)
+        params['offset'] = array(offset).astype(int)
+        qtar = QtarStego.from_dict(params)
         embed_result = qtar.embed(container, watermark)
         container_image = embed_result.img_container
         stego_image = embed_result.img_stego
@@ -82,8 +89,10 @@ class OptIssue4:
     iter = 40
 
     @staticmethod
-    def func(offset, container, watermark, default_metrics):
-        qtar = QtarStego(offset=array(offset).astype(int))
+    def func(offset, container, watermark, params, default_metrics):
+        params = copy(params)
+        params['offset'] = array(offset).astype(int)
+        qtar = QtarStego.from_dict(params)
         embed_result = qtar.embed(container, watermark)
         watermark = embed_result.img_watermark
         extracted_wm = qtar.extract(embed_result.img_stego, embed_result.key)
@@ -104,11 +113,15 @@ class OptIssue5:
     iter = 60
 
     @staticmethod
-    def func(args, container, watermark, default_metrics):
+    def func(args, container, watermark, params, default_metrics):
         max_b = 2 ** int(args[0])
         qp = args[1]
         sc = args[2]
-        qtar = QtarStego(max_block_size=max_b, quant_power=qp, ch_scale=sc)
+        params = copy(params)
+        params['max_block_size'] = max_b
+        params['quant_power'] = qp
+        params['ch_scale'] = sc
+        qtar = QtarStego.from_dict(params)
 
         embed_result = qtar.embed(container, watermark)
         container_image = embed_result.img_container
@@ -134,11 +147,15 @@ class OptIssue6:
     iter = 60
 
     @staticmethod
-    def func(args, container, watermark, default_metrics):
+    def func(args, container, watermark, params, default_metrics):
         max_b = 2 ** int(args[0])
         qp = args[1]
         sc = args[2]
-        qtar = QtarStego(max_block_size=max_b, quant_power=qp, ch_scale=sc)
+        params = copy(params)
+        params['max_block_size'] = max_b
+        params['quant_power'] = qp
+        params['ch_scale'] = sc
+        qtar = QtarStego.from_dict(params)
         embed_result = qtar.embed(container, watermark)
         watermark = embed_result.img_watermark
         extracted_wm = qtar.extract(embed_result.img_stego, embed_result.key)
@@ -165,7 +182,7 @@ class OptIssue7:
     iter = 166
 
     @staticmethod
-    def func(args, container, watermark, default_metrics):
+    def func(args, container, watermark, params, default_metrics):
         th = (args[0], args[1], args[2])
         max_b = 2 ** int(args[3])
         min_b = 2 ** int(args[4])
@@ -173,11 +190,13 @@ class OptIssue7:
             max_b = min_b
         qp = args[5]
         sc = args[6]
-        qtar = QtarStego(homogeneity_threshold=th,
-                         min_block_size=min_b,
-                         max_block_size=max_b,
-                         quant_power=qp,
-                         ch_scale=sc)
+        params = copy(params)
+        params['homogeneity_threshold'] = th
+        params['min_block_size'] = min_b
+        params['max_block_size'] = max_b
+        params['quant_power'] = qp
+        params['ch_scale'] = sc
+        qtar = QtarStego.from_dict(params)
 
         maxbpp = len(container.getbands()) * 8
         try:
@@ -222,16 +241,18 @@ class OptIssue8:
     iter = 166
 
     @staticmethod
-    def func(args, container, watermark, default_metrics):
+    def func(args, container, watermark, params, default_metrics):
         th = (args[0], args[1], args[2])
         x = int(args[3])
         y = int(args[4])
         qp = args[5]
         sc = args[6]
-        qtar = QtarStego(homogeneity_threshold=th,
-                         offset=(x, y),
-                         quant_power=qp,
-                         ch_scale=sc)
+        params = copy(params)
+        params['homogeneity_threshold'] = th
+        params['offset'] = (x, y)
+        params['quant_power'] = qp
+        params['ch_scale'] = sc
+        qtar = QtarStego.from_dict(params)
 
         maxbpp = len(container.getbands()) * 8
 
@@ -274,28 +295,29 @@ class OptIssue9:
     iter = 166
 
     @staticmethod
-    def func(args, container, watermark, default_metrics):
+    def func(args, container, watermark, params, default_metrics):
         def_psnr = default_metrics['container psnr']
         def_bpp = default_metrics['container bpp']
         th = (args[0], args[1], args[2])
         x = int(args[3])
         y = int(args[4])
-        qtar = QtarStego(homogeneity_threshold=th,
-                         offset=(x, y))
+        params = copy(params)
+        params['homogeneity_threshold'] = th
+        params['offset'] = (x, y)
+        qtar = QtarStego.from_dict(params)
 
-        try:
-            embed_result = qtar.embed(container, watermark)
-            container_image = embed_result.img_container
-            stego_image = embed_result.img_stego
-            psnr_ = psnr(container_image, stego_image)
-            bpp_ = embed_result.bpp
+        embed_result = qtar.embed(container, watermark)
+        container_image = embed_result.img_container
+        stego_image = embed_result.img_stego
+        psnr_ = psnr(container_image, stego_image)
+        bpp_ = embed_result.bpp
 
-            if psnr_ < def_psnr or bpp_ < def_bpp:
-                return 0
+        func = -((psnr_ - def_psnr) / def_psnr + (bpp_ - def_bpp) / def_bpp)
 
-            return -((psnr_ - def_psnr) / def_psnr + (bpp_ - def_bpp) / def_bpp)
-        except:
-            return 0
+        if psnr_ < def_psnr or bpp_ < def_bpp:
+            return func + 1000
+
+        return func
 
     @staticmethod
     def get_new_params(result):
@@ -317,11 +339,13 @@ class OptIssue10:
     iter = 166
 
     @staticmethod
-    def func(args, container, watermark, default_metrics):
+    def func(args, container, watermark, params, default_metrics):
         def_psnr = default_metrics['container psnr']
         def_bpp = default_metrics['container bpp']
         th = (args[0], args[1], args[2])
-        qtar = QtarStego(homogeneity_threshold=th)
+        params = copy(params)
+        params['homogeneity_threshold'] = th
+        qtar = QtarStego.from_dict(params)
 
         embed_result = qtar.embed(container, watermark)
         container_image = embed_result.img_container
@@ -329,10 +353,12 @@ class OptIssue10:
         psnr_ = psnr(container_image, stego_image)
         bpp_ = embed_result.bpp
 
-        if psnr_ < def_psnr or bpp_ < def_bpp:
-            return 0
+        func = -((psnr_ - def_psnr) / def_psnr + (bpp_ - def_bpp) / def_bpp)
 
-        return -((psnr_ - def_psnr) / def_psnr + (bpp_ - def_bpp) / def_bpp)
+        if psnr_ < def_psnr or bpp_ < def_bpp:
+            return func + 1000
+
+        return func
 
     @staticmethod
     def get_new_params(result):

@@ -62,7 +62,7 @@ def run_de(params, Issue):
     print(de_info)
 
     with benchmark("optimized in"):
-        de_result = differential_evolution(Issue.func, Issue.bounds, (container, watermark, def_metrics),
+        de_result = differential_evolution(Issue.func, Issue.bounds, (container, watermark, params, def_metrics),
                                            strategy='rand1bin',
                                            popsize=Issue.np,
                                            mutation=Issue.f,
