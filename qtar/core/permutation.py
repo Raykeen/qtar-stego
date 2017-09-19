@@ -1,6 +1,8 @@
 from math import sqrt
+from itertools import count
 
 from numpy import array, concatenate, arange, zeros
+import numpy as np
 
 from qtar.core.matrixregion import MatrixRegions
 
@@ -56,3 +58,26 @@ def reverse_permutation(permutated, permutation):
     for i in range(permutated.size):
         matrix.flat[permutation.flat[i]] = permutated.flat[i]
     return matrix
+
+
+def get_diff_fix(regions_base, regions_new):
+    return {
+        i: np.setdiff1d(region_base, region_new, True)
+        for i, region_base, region_new in zip(count(), regions_base, regions_new)
+    }
+
+
+def fix_diff(regions, fix):
+    wrong_elements = [el for elements in fix.values() for el in elements]
+    regions_base = [fix_region(region, wrong_elements, fix[i]) for i, region in enumerate(regions) if i in fix]
+    mx_regions_base = MatrixRegions(regions.rects, np.copy(regions.matrix))
+    for i in range(0, len(mx_regions_base)):
+        mx_regions_base[i] = regions_base[i]
+    return mx_regions_base
+
+
+def fix_region(region, wrong, right):
+    region_clear = np.setdiff1d(region.flat, wrong)
+    region_fixed = np.append(region_clear, right)
+    regions_flat = np.sort(region_fixed)
+    return regions_flat.reshape(region.shape)
