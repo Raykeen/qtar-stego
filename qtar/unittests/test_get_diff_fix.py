@@ -2,7 +2,7 @@ from unittest import TestCase
 
 import numpy as np
 
-from qtar.core.matrixregion import MatrixRegions, get_diff_fix, fix_diff
+from qtar.core.permutation import MatrixRegions, get_diff_fix, fix_diff
 
 
 class TestGetDiffFix(TestCase):
