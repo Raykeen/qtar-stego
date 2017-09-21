@@ -1,4 +1,5 @@
 import struct
+from sys import getsizeof
 
 import numpy as np
 
@@ -16,41 +17,78 @@ class Key:
         self.wm_shape = wm_shape
         self.container_shape = container_shape
 
+    @property
+    def params_bytes(self):
+        chs_count = len(self.chs_qt_key)
+        return struct.pack('=fiiiiiib',
+                           self.ch_scale,
+                           *self.offset,
+                           *self.wm_shape,
+                           *self.container_shape,
+                           chs_count)
+
+    @property
+    def chs_qt_key_bytes(self):
+        result = []
+
+        for qt_key in self.chs_qt_key:
+            key_bytes = np.packbits(qt_key).tobytes()
+            result.append(int_to_byte(len(key_bytes)) + key_bytes)
+
+        return result
+
+    @property
+    def chs_ar_key_bytes(self):
+        return [np.array(ar_key).astype(np.uint8).tobytes() for ar_key in self.chs_ar_key]
+
+    @property
+    def chs_pm_fix_key_bytes(self):
+        result = []
+
+        for pm_fix_key in self.chs_pm_fix_key:
+            pm_fix_key_bytes = bytes()
+            pm_fix_key_len = int_to_byte(len(pm_fix_key))
+
+            for block_n, fix in pm_fix_key.items():
+                fix_len = len(fix)
+                pm_fix_key_bytes += (int_to_byte(block_n)
+                                     + int_to_byte(fix_len)
+                                     + np.array(fix).astype(np.uint32).tobytes())
+
+            result.append(pm_fix_key_len + pm_fix_key_bytes)
+
+        return result
+
+    @property
+    def params_size(self):
+        return len(self.params_bytes)
+
+    @property
+    def qt_key_size(self):
+        return size_of_chs(self.chs_qt_key_bytes)
+
+    @property
+    def ar_key_size(self):
+        return size_of_chs(self.chs_ar_key_bytes)
+
+    @property
+    def pm_fix_key_size(self):
+        return size_of_chs(self.chs_pm_fix_key_bytes)
+
+    @property
+    def size(self):
+        return self.params_size + self.qt_key_size + self.ar_key_size + self.pm_fix_key_size
+
     def save(self, path):
         with open(path, 'wb') as file:
-            chs_count = len(self.chs_qt_key)
-            key_bytes = struct.pack('=fiiiiiib',
-                                    self.ch_scale,
-                                    *self.offset,
-                                    *self.wm_shape,
-                                    *self.container_shape,
-                                    chs_count)
-
-            for qt_key, ar_key, pm_fix_key in zip(self.chs_qt_key, self.chs_ar_key, self.chs_pm_fix_key):
-                qt_key_packed = np.packbits(qt_key)
-                qt_key_len_bytes = int_to_byte(len(qt_key_packed))
-
-                ar_key_packed = np.array(ar_key).astype(np.uint8)
-
-                pm_fix_key_bytes = bytes()
-                pm_fix_key_len = int_to_byte(len(pm_fix_key))
-
-                for block_n, fix in pm_fix_key.items():
-                    fix_len = len(fix)
-                    pm_fix_key_bytes += (int_to_byte(block_n)
-                                         + int_to_byte(fix_len)
-                                         + np.array(fix).astype(np.uint32).tobytes())
-
-                # pm_key_packed = np.array(pm_key).astype(np.uint32)
-
-                key_bytes += (qt_key_len_bytes
-                              + qt_key_packed.tobytes()
-                              + ar_key_packed.tobytes()
-                              # + pm_key_packed.tobytes()
-                              + pm_fix_key_len
-                              + pm_fix_key_bytes)
+            key_bytes = self.params_bytes
+            for qt_key_bytes, ar_key_bytes, pm_fix_key_bytes in zip(self.chs_qt_key_bytes,
+                                                                    self.chs_ar_key_bytes,
+                                                                    self.chs_pm_fix_key_bytes):
+                key_bytes += (qt_key_bytes + ar_key_bytes + pm_fix_key_bytes)
 
             file.write(key_bytes)
+        return len(key_bytes)
 
     @classmethod
     def open(cls, path):
@@ -65,7 +103,6 @@ class Key:
             chs_qt_key = []
             chs_ar_key = []
             chs_pm_fix_key = []
-            # chs_pm_key = []
 
             for ch in range(chs_count):
                 qt_key_bytes_size = read_int(file)
@@ -81,14 +118,10 @@ class Key:
                     fix_len = read_int(file)
                     pm_fix_key[block_n] = np.fromfile(file, np.uint32, fix_len)
 
-                # pm_key = np.fromfile(file, np.uint32, c_w * c_h).reshape(container_shape)
-
                 chs_qt_key.append(qt_key)
                 chs_ar_key.append(ar_key)
                 chs_pm_fix_key.append(pm_fix_key)
-                # chs_pm_key.append(pm_key)
 
-        # return cls(ch_scale, offset, chs_qt_key, chs_ar_key, chs_pm_key, wm_shape, container_shape)
         return cls(ch_scale, offset, chs_qt_key, chs_ar_key, wm_shape, container_shape, chs_pm_fix_key)
 
 
@@ -146,3 +179,7 @@ def read_uint8(file, size):
 
 def read_bits(file, size):
     return np.unpackbits(read_uint8(file, size))
+
+
+def size_of_chs(chs):
+    return sum(len(ch) for ch in chs)
