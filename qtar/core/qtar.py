@@ -3,8 +3,7 @@ from itertools import islice
 from math import log2, pow, sqrt
 from copy import copy
 
-from PIL import Image
-from PIL import ImageChops
+from PIL import Image, ImageChops
 from numpy import array, zeros, append
 from scipy.fftpack import dct, idct
 
@@ -63,7 +62,6 @@ class QtarStego:
             container.chs_regions_dct_embed.append(regions_embed)
             key.chs_qt_key.append(qt_key)
             key.chs_ar_key.append(ar_indexes)
-            key.chs_pm_key.append(pm_key)
 
         available_space = container.available_space
         wm_shape = img_watermark.size
@@ -76,12 +74,11 @@ class QtarStego:
 
         chs_stego_img = []
         chs_embedded_dct_regions = []
-        for regions_dct, embed_dct_regions, wm_ch, qt_key, pm_key in \
+        for regions_dct, embed_dct_regions, wm_ch, qt_key in \
                 zip(container.chs_regions_dct,
                     container.chs_regions_dct_embed,
                     chs_watermark,
-                    key.chs_qt_key,
-                    key.chs_pm_key):
+                    key.chs_qt_key):
             embedded_dct_regions = self.__embed_in_regions(embed_dct_regions, wm_ch)
             idct_regions = MatrixRegions(regions_dct.rects, embedded_dct_regions.matrix)
             idct_regions = self.__idct_regions(idct_regions)
