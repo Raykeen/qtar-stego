@@ -10,7 +10,7 @@ from scipy.fftpack import dct, idct
 
 from qtar.core.imageqt import ImageQT
 from qtar.core.adaptiveregions import adapt_regions
-from qtar.core.permutation import build_qt_permutation, permutate, reverse_permutation
+from qtar.core.permutation import reverse_permutation, fix_diff, get_diff_fix
 from qtar.core.container import Container, Key
 from qtar.core.matrixregion import MatrixRegions, draw_borders_on
 
@@ -76,15 +76,22 @@ class QtarStego:
 
         chs_stego_img = []
         chs_embedded_dct_regions = []
-        for regions_dct, embed_dct_regions, wm_ch, pm_key in \
+        for regions_dct, embed_dct_regions, wm_ch, qt_key, pm_key in \
                 zip(container.chs_regions_dct,
                     container.chs_regions_dct_embed,
                     chs_watermark,
+                    key.chs_qt_key,
                     key.chs_pm_key):
             embedded_dct_regions = self.__embed_in_regions(embed_dct_regions, wm_ch)
             idct_regions = MatrixRegions(regions_dct.rects, embedded_dct_regions.matrix)
             idct_regions = self.__idct_regions(idct_regions)
             stego_img_mx = reverse_permutation(idct_regions.matrix, pm_key)
+
+            compressed_stego_img_mx = array(Image.fromarray(copy(stego_img_mx)).convert('L'))
+            distorted_regions = self.__divide_into_regions(compressed_stego_img_mx, qt_key)
+            ch_pm_fix = get_diff_fix(pm_key, distorted_regions.permutation, distorted_regions.rects)
+
+            key.chs_pm_fix_key.append(ch_pm_fix)
             chs_stego_img.append(stego_img_mx)
             chs_embedded_dct_regions.append(embedded_dct_regions)
 
@@ -122,7 +129,7 @@ class QtarStego:
             size = min(self.max_block_size, ch_image.shape[0])
             regions = ImageQT(ch_image, self.min_block_size, size, self.homogeneity_threshold)
         else:
-            regions = ImageQT.from_keys(ch_image, key, pm_key)
+            regions = ImageQT(ch_image, key=key, permutation=pm_key)
         return regions
 
     @staticmethod
@@ -181,8 +188,13 @@ class QtarStego:
         for ch, ch_stego in enumerate(chs_stego):
             qt_key = key.chs_qt_key[ch]
             ar_indexes = key.chs_ar_key[ch]
-            pm_key = key.chs_pm_key[ch]
+            pm_fix_key = key.chs_pm_fix_key[ch]
             wm_shape = key.wm_shape
+
+            distorted_regions = self.__divide_into_regions(copy(ch_stego), qt_key)
+            distorted_pm_mx_regions = MatrixRegions(distorted_regions.rects, distorted_regions.permutation)
+            pm_key = fix_diff(distorted_pm_mx_regions, pm_fix_key).matrix
+
             regions = self.__divide_into_regions(ch_stego, qt_key, pm_key)
             regions_dct = self.__dct_regions(regions)
             regions_extract = self.__define_regions_to_extract(regions_dct, ar_indexes)

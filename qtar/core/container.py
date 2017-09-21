@@ -7,12 +7,13 @@ from qtar.core.imageqt import parse_qt_key
 
 class Key:
     def __init__(self, ch_scale=None, offset=None, chs_qt_key=None, chs_ar_key=None, chs_pm_key=None, wm_shape=None,
-                 container_shape=None):
+                 container_shape=None, chs_pm_fix_key=None):
         self.ch_scale = ch_scale
         self.offset = offset
         self.chs_qt_key = chs_qt_key or []
         self.chs_ar_key = chs_ar_key or []
         self.chs_pm_key = chs_pm_key or []
+        self.chs_pm_fix_key = chs_pm_fix_key or []
         self.wm_shape = wm_shape
         self.container_shape = container_shape
 

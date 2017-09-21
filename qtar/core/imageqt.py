@@ -58,20 +58,22 @@ class ImageQT(MatrixRegions):
         self.leaves = []
         self.root_node = QtNode(None, (0, 0, matrix.shape[1], matrix.shape[0]))
 
-        if key is None and permutation is None:
-            self.key = []
+        have_permutation = permutation is not None
+
+        if not have_permutation:
             self.permutation = np.arange(matrix.size).reshape(matrix.shape)
+
+        if key is None:
+            self.key = []
             self.__build_tree(self.root_node)
         else:
             self.min_size = 0
             self.max_size = 0
-            self.__build_tree_from_key(self.root_node, copy(key))
-            self.matrix = permutate(self.matrix, permutation)
-        self.rects = [leave.rect for leave in self.leaves]
 
-    @classmethod
-    def from_keys(cls, matrix, qt_key, pm_key):
-        return cls(matrix, key=qt_key, permutation=pm_key)
+            self.__build_tree_from_key(self.root_node, copy(key), not have_permutation)
+            if have_permutation:
+                self.matrix = permutate(self.matrix, permutation)
+        self.rects = [leave.rect for leave in self.leaves]
 
     def __build_tree(self, node):
         too_big = node.size > self.max_size
@@ -91,13 +93,15 @@ class ImageQT(MatrixRegions):
         for child in children:
             self.__build_tree(child)
 
-    def __build_tree_from_key(self, node, key):
+    def __build_tree_from_key(self, node, key, to_permutate=False):
         subivide = key.pop(0)
         self.all_nodes.append(node)
         if subivide:
+            if to_permutate:
+                self.__align(node.rect)
             children = node.subdivide()
             for child in children:
-                self.__build_tree_from_key(child, key)
+                self.__build_tree_from_key(child, key, to_permutate)
         else:
             if node.depth > self.max_depth:
                 self.max_depth = node.depth

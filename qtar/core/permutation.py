@@ -60,10 +60,12 @@ def reverse_permutation(permutated, permutation):
     return matrix
 
 
-def get_diff_fix(regions_base, regions_new):
+def get_diff_fix(base_mx, new_mx, rects):
+    base_regions = MatrixRegions(rects, base_mx)
+    new_mx = MatrixRegions(rects, new_mx)
     return {
         i: np.setdiff1d(region_base, region_new, True)
-        for i, region_base, region_new in zip(count(), regions_base, regions_new)
+        for i, region_base, region_new in zip(count(), base_regions, new_mx)
     }
 
 
