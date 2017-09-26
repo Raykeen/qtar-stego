@@ -49,10 +49,9 @@ class Key:
             pm_fix_key_bytes = bytes()
             pm_fix_key_len = int_to_byte(len(pm_fix_key))
 
-            for block_n, fix in pm_fix_key.items():
+            for fix in pm_fix_key:
                 fix_len = len(fix)
-                pm_fix_key_bytes += (int_to_byte(block_n)
-                                     + int_to_byte(fix_len)
+                pm_fix_key_bytes += (int_to_byte(fix_len)
                                      + np.array(fix).astype(np.uint32).tobytes())
 
             result.append(pm_fix_key_len + pm_fix_key_bytes)
@@ -112,11 +111,10 @@ class Key:
                 ar_key = read_uint8(file, block_count)
 
                 pm_fix_key_len = read_int(file)
-                pm_fix_key = {}
+                pm_fix_key = []
                 for i in range(pm_fix_key_len):
-                    block_n = read_int(file)
                     fix_len = read_int(file)
-                    pm_fix_key[block_n] = np.fromfile(file, np.uint32, fix_len)
+                    pm_fix_key.append(np.fromfile(file, np.uint32, fix_len))
 
                 chs_qt_key.append(qt_key)
                 chs_ar_key.append(ar_key)

@@ -17,15 +17,15 @@ def reverse_permutation(permutated, permutation):
 def get_diff_fix(base_mx, new_mx, rects):
     base_regions = MatrixRegions(rects, base_mx)
     new_mx = MatrixRegions(rects, new_mx)
-    return {
-        i: np.setdiff1d(region_base, region_new, True)
-        for i, region_base, region_new in zip(count(), base_regions, new_mx)
-    }
+    return [
+        np.setdiff1d(region_base, region_new, True)
+        for region_base, region_new in zip(base_regions, new_mx)
+    ]
 
 
 def fix_diff(regions, fix):
-    wrong_elements = [el for elements in fix.values() for el in elements]
-    regions_base = [fix_region(region, wrong_elements, fix[i]) for i, region in enumerate(regions) if i in fix]
+    wrong_elements = [el for elements in fix for el in elements]
+    regions_base = [fix_region(region, wrong_elements, region_fix) for region, region_fix in zip(regions, fix)]
     mx_regions_base = MatrixRegions(regions.rects, np.copy(regions.matrix))
     for i in range(0, len(mx_regions_base)):
         mx_regions_base[i] = regions_base[i]

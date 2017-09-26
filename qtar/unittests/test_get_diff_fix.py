@@ -28,12 +28,12 @@ class TestGetDiffFix(TestCase):
             self.new_mx
         )
 
-        self.fix = {
-            0: np.array([5]),
-            1: np.array([6]),
-            2: np.array([13]),
-            3: np.array([14])
-        }
+        self.fix = [
+            np.array([5]),
+            np.array([6]),
+            np.array([13]),
+            np.array([14])
+        ]
 
     def test_get_diff_fix(self):
         self.assertEqual(self.fix, get_diff_fix(self.base_mx, self.new_mx, self.rects))
