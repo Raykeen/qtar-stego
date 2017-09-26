@@ -50,6 +50,7 @@ class QtarStego:
         container = Container(key=key)
 
         chs_regions = []
+        chs_pm_key = []
         for ch, ch_image in enumerate(chs_container):
             regions = self.__divide_into_regions(ch_image)
             qt_key = regions.key
@@ -58,6 +59,7 @@ class QtarStego:
             regions_embed, ar_indexes = self.__define_regions_to_embed(regions_dct)
 
             chs_regions.append(regions)
+            chs_pm_key.append(pm_key)
             container.chs_regions_dct.append(regions_dct)
             container.chs_regions_dct_embed.append(regions_embed)
             key.chs_qt_key.append(qt_key)
@@ -74,10 +76,11 @@ class QtarStego:
 
         chs_stego_img = []
         chs_embedded_dct_regions = []
-        for regions_dct, embed_dct_regions, wm_ch, qt_key in \
+        for regions_dct, embed_dct_regions, wm_ch, pm_key, qt_key in \
                 zip(container.chs_regions_dct,
                     container.chs_regions_dct_embed,
                     chs_watermark,
+                    chs_pm_key,
                     key.chs_qt_key):
             embedded_dct_regions = self.__embed_in_regions(embed_dct_regions, wm_ch)
             idct_regions = MatrixRegions(regions_dct.rects, embedded_dct_regions.matrix)
