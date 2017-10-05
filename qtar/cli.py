@@ -32,6 +32,13 @@ k:          {ch_scale:.2f}
 offset:     {offset[0]}px {offset[1]}px
 BPP:        {bpp:.4f}
 PSNR:       {psnr:.4f}"""
+KEY_INFO_TEMPLATE = """  
+Key size info (bytes):  
+key size:    {key.size}  
+params size: {key.params_size}  
+qt key size: {key.qt_key_size}  
+ar key size: {key.ar_key_size}
+"""
 
 
 def main():
@@ -87,6 +94,9 @@ def embed(params):
     if params['key']:
         key.save(params['key'])
         key = Key.open(params['key'])
+
+    key_info = KEY_INFO_TEMPLATE.format(key=key)
+    print(key_info)
 
     with benchmark("extracted in"):
         extract_stages_imgs = qtar.extract(stego, key, stages=True)
