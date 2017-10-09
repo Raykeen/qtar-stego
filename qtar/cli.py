@@ -37,7 +37,7 @@ Key size info (bytes):
 key size:    {key.size}  
 params size: {key.params_size}  
 qt key size: {key.qt_key_size}  
-ar key size: {key.ar_key_size}
+cf key size: {key.cf_key_size}
 """
 
 

@@ -5,14 +5,15 @@ import numpy as np
 from qtar.core.imageqt import parse_qt_key
 
 PARAMS_STRUCT = '=fiiiib'
+CF_POINTS_COUNT = 3
 
 
 class Key:
-    def __init__(self, ch_scale=None, offset=None, chs_qt_key=None, chs_ar_key=None, wm_shape=None):
+    def __init__(self, ch_scale=None, offset=None, chs_qt_key=None, chs_cf_key=None, wm_shape=None):
         self.ch_scale = ch_scale
         self.offset = offset
         self.chs_qt_key = chs_qt_key or []
-        self.chs_ar_key = chs_ar_key or []
+        self.chs_cf_key = chs_cf_key or []
         self.wm_shape = wm_shape
 
     @property
@@ -35,12 +36,13 @@ class Key:
         return result
 
     @property
-    def chs_ar_key_bytes(self):
+    def chs_cf_key_bytes(self):
         result = []
 
-        for ar_key in self.chs_ar_key:
-            key_bytes = ints_to_bytes(ar_key, np.uint8)
-            result.append(int_to_byte(len(key_bytes)) + key_bytes)
+        for cf_key in self.chs_cf_key:
+            flat_key = np.array(cf_key).flat
+            key_bytes = ints_to_bytes(flat_key, np.uint8)
+            result.append(key_bytes)
 
         return result
 
@@ -53,18 +55,18 @@ class Key:
         return size_of_chs(self.chs_qt_key_bytes)
 
     @property
-    def ar_key_size(self):
-        return size_of_chs(self.chs_ar_key_bytes)
+    def cf_key_size(self):
+        return size_of_chs(self.chs_cf_key_bytes)
 
     @property
     def size(self):
-        return self.params_size + self.qt_key_size + self.ar_key_size
+        return self.params_size + self.qt_key_size + self.cf_key_size
 
     def save(self, path):
         with open(path, 'wb') as file:
             key_bytes = self.params_bytes
-            for qt_key_bytes, ar_key_bytes in zip(self.chs_qt_key_bytes, self.chs_ar_key_bytes):
-                key_bytes += (qt_key_bytes + ar_key_bytes)
+            for qt_key_bytes, cf_key_bytes in zip(self.chs_qt_key_bytes, self.chs_cf_key_bytes):
+                key_bytes += (qt_key_bytes + cf_key_bytes)
 
             file.write(key_bytes)
         return len(key_bytes)
@@ -78,20 +80,20 @@ class Key:
             wm_shape = (wm_w, wm_h)
 
             chs_qt_key = []
-            chs_ar_key = []
+            chs_cf_key = []
 
             for ch in range(chs_count):
                 qt_key_bytes_size = read_int(file)
                 qt_key = read_bits(file, qt_key_bytes_size)
                 qt_key, block_count = parse_qt_key(qt_key.tolist())
 
-                ar_key_bytes_size = read_int(file)
-                ar_key = np.fromfile(file, np.uint8, ar_key_bytes_size).tolist()
+                cf_key_flat = np.fromfile(file, np.uint8, block_count * CF_POINTS_COUNT)
+                cf_key = [tuple(curve.astype(np.int)) for curve in np.split(cf_key_flat, block_count)]
 
                 chs_qt_key.append(qt_key)
-                chs_ar_key.append(ar_key)
+                chs_cf_key.append(cf_key)
 
-        return cls(ch_scale, offset, chs_qt_key, chs_ar_key, wm_shape)
+        return cls(ch_scale, offset, chs_qt_key, chs_cf_key, wm_shape)
 
 
 class Container:
@@ -116,7 +118,7 @@ class Container:
 
     @property
     def available_bpp(self):
-        total_size = sum(regions.get_total_size()
+        total_size = sum(regions.total_size
                          for regions in self.chs_regions_dct_embed)
         bpp = (total_size * 8) / self.size ** 2
         return bpp
