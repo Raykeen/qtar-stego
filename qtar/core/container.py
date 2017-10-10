@@ -4,13 +4,14 @@ import numpy as np
 
 from qtar.core.imageqt import parse_qt_key
 
-PARAMS_STRUCT = '=fiiiib'
+PARAMS_STRUCT = '=fbiiiib'
 CF_POINTS_COUNT = 3
 
 
 class Key:
-    def __init__(self, ch_scale=None, offset=None, chs_qt_key=None, chs_cf_key=None, wm_shape=None):
+    def __init__(self, ch_scale=None,  cf_grid_size=None, offset=None, chs_qt_key=None, chs_cf_key=None, wm_shape=None):
         self.ch_scale = ch_scale
+        self.cf_grid_size = cf_grid_size
         self.offset = offset
         self.chs_qt_key = chs_qt_key or []
         self.chs_cf_key = chs_cf_key or []
@@ -21,9 +22,17 @@ class Key:
         chs_count = len(self.chs_qt_key)
         return struct.pack(PARAMS_STRUCT,
                            self.ch_scale,
+                           self.cf_grid_size,
                            *self.offset,
                            *self.wm_shape,
                            chs_count)
+
+    @staticmethod
+    def cf_key_type(cf_grid_size):
+        if cf_grid_size == 1:
+            return np.uint16
+        else:
+            return np.uint8
 
     @property
     def chs_qt_key_bytes(self):
@@ -41,7 +50,7 @@ class Key:
 
         for cf_key in self.chs_cf_key:
             flat_key = np.array(cf_key).flat
-            key_bytes = ints_to_bytes(flat_key, np.uint8)
+            key_bytes = ints_to_bytes(flat_key, self.cf_key_type(self.cf_grid_size))
             result.append(key_bytes)
 
         return result
@@ -75,7 +84,7 @@ class Key:
     def open(cls, path):
         with open(path, 'rb') as file:
             params_bytes = file.read(struct.calcsize(PARAMS_STRUCT))
-            ch_scale, x, y, wm_w, wm_h, chs_count = struct.unpack(PARAMS_STRUCT, params_bytes)
+            ch_scale, cf_grid_size, x, y, wm_w, wm_h, chs_count = struct.unpack(PARAMS_STRUCT, params_bytes)
             offset = (x, y)
             wm_shape = (wm_w, wm_h)
 
@@ -87,13 +96,13 @@ class Key:
                 qt_key = read_bits(file, qt_key_bytes_size)
                 qt_key, block_count = parse_qt_key(qt_key.tolist())
 
-                cf_key_flat = np.fromfile(file, np.uint8, block_count * CF_POINTS_COUNT)
+                cf_key_flat = np.fromfile(file, cls.cf_key_type(cf_grid_size), block_count * CF_POINTS_COUNT)
                 cf_key = [tuple(curve.astype(np.int)) for curve in np.split(cf_key_flat, block_count)]
 
                 chs_qt_key.append(qt_key)
                 chs_cf_key.append(cf_key)
 
-        return cls(ch_scale, offset, chs_qt_key, chs_cf_key, wm_shape)
+        return cls(ch_scale, cf_grid_size, offset, chs_qt_key, chs_cf_key, wm_shape)
 
 
 class Container:

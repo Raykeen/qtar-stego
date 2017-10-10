@@ -7,13 +7,12 @@ from PIL import Image, ImageDraw
 from qtar.core.matrixregion import MatrixRegions, draw_borders
 from qtar.core.quantizationmatrix import generate_quantization_matrix
 
-CF_GRID_SIZE = 8
-
 
 class CFRegions(MatrixRegions):
-    def __init__(self, rects, matrix, curves):
+    def __init__(self, rects, matrix, curves, grid_size=8):
         super().__init__(rects, matrix)
         self.curves = curves
+        self.grid_size = grid_size
 
     def __getitem__(self, i):
         mx_region = self.get_cfregion(self.rects[i], self.curves[i])
@@ -27,8 +26,8 @@ class CFRegions(MatrixRegions):
         curve = self.curves[i]
 
         x0, y0, x1, y1 = rect
-        grid_width = int((x1 - x0) / CF_GRID_SIZE)
-        grid_height = int((y1 - y0) / CF_GRID_SIZE)
+        grid_width = int((x1 - x0) / self.grid_size)
+        grid_height = int((y1 - y0) / self.grid_size)
 
         grid_cells_count = 0
 
@@ -36,12 +35,12 @@ class CFRegions(MatrixRegions):
             y = math.ceil(curve_func(curve, x))
             grid_cells_count += grid_height - y
 
-        return grid_cells_count * CF_GRID_SIZE ** 2
+        return grid_cells_count * self.grid_size ** 2
 
     def get_cfregion(self, rect, curve):
         rect_region = super().get_region(rect)
         return np.concatenate([
-            column[aligned_curve_func(curve, x):]
+            column[aligned_curve_func(curve, x, self.grid_size):]
             for x, column in enumerate(rect_region.T)  # column wise
         ])
 
@@ -51,14 +50,14 @@ class CFRegions(MatrixRegions):
         val_iter = iter(value)
 
         for x in range(width):
-            y = aligned_curve_func(curve, x)
+            y = aligned_curve_func(curve, x, self.grid_size)
             col_height = height - y
             col_value = np.array(list(islice(val_iter, col_height)))
             region[y:, x] = col_value
 
     @classmethod
-    def from_regions(cls, mregions, curves):
-        return cls(mregions.rects, mregions.matrix, curves)
+    def from_regions(cls, mregions, curves, cf_grid_size):
+        return cls(mregions.rects, mregions.matrix, curves, cf_grid_size)
 
     @property
     def total_size(self):
@@ -68,8 +67,8 @@ class CFRegions(MatrixRegions):
         return total_size
 
 
-def aligned_curve_func(curve, x):
-    result = math.ceil(curve_func(curve, x // CF_GRID_SIZE)) * CF_GRID_SIZE
+def aligned_curve_func(curve, x, grid_size=8):
+    result = math.ceil(curve_func(curve, x // grid_size)) * grid_size
     return result
 
 
@@ -85,9 +84,9 @@ def curve_func(curve, x):
             y = ((B - x) / (Cx - B) + 1) * B
 
     return y if y > 0 else 0
-np.seterr(all='raise')
 
-def fit_cfregions(dct_regions, q_power):
+
+def fit_cfregions(dct_regions, q_power, grid_size):
     curves = []
 
     for region in dct_regions:
@@ -106,15 +105,15 @@ def fit_cfregions(dct_regions, q_power):
             curves.append((0, 0, 0))
 
         curves.append((
-            math.ceil((significant_area_height + 1) / CF_GRID_SIZE),
-            math.ceil((significant_area_diagonal + 1) / CF_GRID_SIZE),
-            math.ceil((significant_area_width + 1) / CF_GRID_SIZE)
+            math.ceil((significant_area_height + 1) / grid_size),
+            math.ceil((significant_area_diagonal + 1) / grid_size),
+            math.ceil((significant_area_width + 1) / grid_size)
         ))
 
-        if math.ceil(significant_area_diagonal / CF_GRID_SIZE) == 0:
+        if math.ceil(significant_area_diagonal / grid_size) == 0:
             pass
 
-    return CFRegions.from_regions(dct_regions, curves)
+    return CFRegions.from_regions(dct_regions, curves, grid_size)
 
 
 def draw_cf_map(cfregions, value=255, only_right_bottom=True):
@@ -125,7 +124,11 @@ def draw_cf_map(cfregions, value=255, only_right_bottom=True):
         Ay, B, Cx = curve
         region_img = Image.fromarray(region)
         draw = ImageDraw.Draw(region_img)
-        draw.line([(0, Ay * CF_GRID_SIZE), (B * CF_GRID_SIZE, B * CF_GRID_SIZE), (Cx * CF_GRID_SIZE, 0)], fill=value)
+        draw.line([
+            (0, Ay * cfregions.grid_size),
+            (B * cfregions.grid_size, B * cfregions.grid_size),
+            (Cx * cfregions.grid_size, 0)
+        ], fill=value)
         result_regions[i] = np.array(region_img)
 
     return result_regions.matrix
