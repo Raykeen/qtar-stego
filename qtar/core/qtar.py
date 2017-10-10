@@ -244,7 +244,7 @@ class QtarStego:
             else:
                 chs_matrix[ch_id] = draw_borders_on(chs_matrix[ch_id], chs_regions[ch_id].rects, max_value,
                                                     only_right_bottom)
-            return chs_matrix
+        return chs_matrix
 
     def __regions_to_image(self, chs_regions, mode, offset=None, factor=1, borders=False, only_right_bottom=False):
         if borders:
