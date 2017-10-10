@@ -36,13 +36,7 @@ class Key:
 
     @property
     def chs_ar_key_bytes(self):
-        result = []
-
-        for ar_key in self.chs_ar_key:
-            key_bytes = ints_to_bytes(ar_key, np.uint8)
-            result.append(int_to_byte(len(key_bytes)) + key_bytes)
-
-        return result
+        return [ints_to_bytes(ar_key, np.uint8) for ar_key in self.chs_ar_key]
 
     @property
     def params_size(self):
@@ -85,8 +79,7 @@ class Key:
                 qt_key = read_bits(file, qt_key_bytes_size)
                 qt_key, block_count = parse_qt_key(qt_key.tolist())
 
-                ar_key_bytes_size = read_int(file)
-                ar_key = np.fromfile(file, np.uint8, ar_key_bytes_size).tolist()
+                ar_key = np.fromfile(file, np.uint8, block_count).tolist()
 
                 chs_qt_key.append(qt_key)
                 chs_ar_key.append(ar_key)
