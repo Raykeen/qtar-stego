@@ -51,3 +51,13 @@ def draw_borders_on(matrix, rects, value, only_right_bottom=False):
 
 def draw_borders(regions, value, only_right_bottom=False):
     return draw_borders_on(regions.matrix, regions.rects, value, only_right_bottom)
+
+
+def divide_into_equal_regions(matrix, region_size):
+    height, width = matrix.shape
+    rects = [
+        (x, y, x + region_size, y + region_size)
+        for y in range(0, height, region_size) for x in range(0, width, region_size)
+    ]
+
+    return MatrixRegions(rects, matrix)

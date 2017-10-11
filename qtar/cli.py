@@ -15,6 +15,7 @@ EMBEDDING_INFO_TEMPLATE = """Embedding {watermark} in {container} using QTAR
 QTAR params:
 threshold:             {homogeneity_threshold}
 min - max block sizes: {min_block_size} - {max_block_size}
+watermark block size:  {wm_block_size}
 quantization power:    {quant_power:.2f}
 scale:                 {ch_scale:.2f}
 offset:                {offset}
@@ -27,6 +28,7 @@ BCR:     {bcr:.4f}
 WM_SIZE: {width}x{height}"""
 STAMP_TEMPLATE = """threshold:  {homogeneity_threshold}
 block size: {min_block_size}px - {max_block_size}px
+wm block:   {wm_block_size}px
 q power:    {quant_power:.2f}
 k:          {ch_scale:.2f}
 offset:     {offset[0]}px {offset[1]}px

@@ -4,11 +4,12 @@ import numpy as np
 
 from qtar.core.imageqt import parse_qt_key
 
-PARAMS_STRUCT = '=fiiiib'
+PARAMS_STRUCT = '=ifiiiib'
 
 
 class Key:
-    def __init__(self, ch_scale=None, offset=None, chs_qt_key=None, chs_ar_key=None, wm_shape=None):
+    def __init__(self, wm_block_size=None, ch_scale=None, offset=None, chs_qt_key=None, chs_ar_key=None, wm_shape=None):
+        self.wm_block_size = wm_block_size
         self.ch_scale = ch_scale
         self.offset = offset
         self.chs_qt_key = chs_qt_key or []
@@ -19,6 +20,7 @@ class Key:
     def params_bytes(self):
         chs_count = len(self.chs_qt_key)
         return struct.pack(PARAMS_STRUCT,
+                           self.wm_block_size,
                            self.ch_scale,
                            *self.offset,
                            *self.wm_shape,
@@ -67,7 +69,7 @@ class Key:
     def open(cls, path):
         with open(path, 'rb') as file:
             params_bytes = file.read(struct.calcsize(PARAMS_STRUCT))
-            ch_scale, x, y, wm_w, wm_h, chs_count = struct.unpack(PARAMS_STRUCT, params_bytes)
+            wm_block_size, ch_scale, x, y, wm_w, wm_h, chs_count = struct.unpack(PARAMS_STRUCT, params_bytes)
             offset = (x, y)
             wm_shape = (wm_w, wm_h)
 
@@ -84,7 +86,7 @@ class Key:
                 chs_qt_key.append(qt_key)
                 chs_ar_key.append(ar_key)
 
-        return cls(ch_scale, offset, chs_qt_key, chs_ar_key, wm_shape)
+        return cls(wm_block_size, ch_scale, offset, chs_qt_key, chs_ar_key, wm_shape)
 
 
 class Container:

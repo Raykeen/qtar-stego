@@ -11,16 +11,19 @@ from scipy.fftpack import dct, idct
 from qtar.core.imageqt import ImageQT
 from qtar.core.adaptiveregions import adapt_regions
 from qtar.core.container import Container, Key
-from qtar.core.matrixregion import MatrixRegions, draw_borders_on
+from qtar.core.matrixregion import MatrixRegions, divide_into_equal_regions, draw_borders_on
 
 DEFAULT_PARAMS = {
     'homogeneity_threshold': 0.4,
     'min_block_size':        8,
     'max_block_size':        512,
+    'wm_block_size':         8,
     'quant_power':           1,
     'ch_scale':              4.37,
     'offset':                (0, 0)
 }
+
+WM_BLOCK_SIZE = 8
 
 
 class QtarStego:
@@ -28,12 +31,14 @@ class QtarStego:
                  homogeneity_threshold=DEFAULT_PARAMS['homogeneity_threshold'],
                  min_block_size=DEFAULT_PARAMS['min_block_size'],
                  max_block_size=DEFAULT_PARAMS['max_block_size'],
+                 wm_block_size=DEFAULT_PARAMS['wm_block_size'],
                  quant_power=DEFAULT_PARAMS['quant_power'],
                  ch_scale=DEFAULT_PARAMS['ch_scale'],
                  offset=DEFAULT_PARAMS['offset']):
         self.homogeneity_threshold = homogeneity_threshold
         self.min_block_size = min_block_size
         self.max_block_size = max_block_size
+        self.wm_block_size = wm_block_size
         self.quant_power = quant_power
         self.ch_scale = ch_scale
         self.offset = offset
@@ -45,7 +50,8 @@ class QtarStego:
         container_image_mode = img_container.mode
 
         key = Key(ch_scale=self.ch_scale,
-                  offset=self.offset)
+                  offset=self.offset,
+                  wm_block_size=self.wm_block_size)
         container = Container(key=key)
 
         chs_regions = []
@@ -75,7 +81,9 @@ class QtarStego:
         for regions_dct, embed_dct_regions, wm_ch in zip(container.chs_regions_dct,
                                                          container.chs_regions_dct_embed,
                                                          chs_watermark):
-            embedded_dct_regions = self.__embed_in_regions(embed_dct_regions, wm_ch)
+            wm_regions = divide_into_equal_regions(wm_ch, self.wm_block_size)
+            wm_dct_regions = self.__dct_regions(wm_regions)
+            embedded_dct_regions = self.__embed_in_regions(embed_dct_regions, wm_dct_regions.matrix)
             idct_regions = MatrixRegions(regions_dct.rects, embedded_dct_regions.matrix)
             stego_img_regions = self.__idct_regions(idct_regions)
             chs_stego_img.append(stego_img_regions.matrix)
@@ -175,13 +183,16 @@ class QtarStego:
             qt_key = key.chs_qt_key[ch]
             ar_indexes = key.chs_ar_key[ch]
             wm_shape = key.wm_shape
+            wm_block_size = key.wm_block_size
             regions = self.__divide_into_regions(ch_stego, qt_key)
             regions_dct = self.__dct_regions(regions)
             regions_extract = self.__define_regions_to_extract(regions_dct, ar_indexes)
-            ch_watermark = self.__extract_from_regions(regions_extract, wm_shape)
+            wm_dct = self.__extract_from_regions(regions_extract, wm_shape)
+            wm_dct_regions = divide_into_equal_regions(wm_dct, wm_block_size)
+            wm_regions = self.__idct_regions(wm_dct_regions)
             chs_regions.append(regions)
             chs_regions_extract.append(regions_extract)
-            chs_watermark.append(ch_watermark)
+            chs_watermark.append(wm_regions.matrix)
 
         if stages:
             stages_imgs = {
@@ -258,6 +269,7 @@ class QtarStego:
             'homogeneity_threshold': self.homogeneity_threshold,
             'min_block_size':        self.min_block_size,
             'max_block_size':        self.max_block_size,
+            'wm_block_size':         self.wm_block_size,
             'quant_power':           self.quant_power,
             'ch_scale':              self.ch_scale,
             'offset':                self.offset
@@ -268,6 +280,7 @@ class QtarStego:
         return QtarStego(params['homogeneity_threshold'],
                          params['min_block_size'],
                          params['max_block_size'],
+                         params['wm_block_size'],
                          params['quant_power'],
                          params['ch_scale'],
                          params['offset'])
