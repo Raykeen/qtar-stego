@@ -63,10 +63,10 @@ def main():
 def embed(params):
     container = Image.open(params['container'])
     if params['container_size']:
-        container = container.resize((params['container_size'][0], params['container_size'][1]), Image.BILINEAR)
+        container = container.resize(params['container_size'], Image.BILINEAR)
     watermark = Image.open(params['watermark'])
     if params['watermark_size']:
-        watermark = watermark.resize((params['watermark_size'][0], params['watermark_size'][1]), Image.BILINEAR)
+        watermark = watermark.resize(params['watermark_size'], Image.BILINEAR)
 
     embedding_info = EMBEDDING_INFO_TEMPLATE.format(**params)
     print(embedding_info)
