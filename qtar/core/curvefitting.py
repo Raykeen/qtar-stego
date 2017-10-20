@@ -39,8 +39,9 @@ class CFRegions(MatrixRegions):
 
     def get_cfregion(self, rect, curve):
         rect_region = super().get_region(rect)
+        normal_curve = [coord * self.grid_size for coord in curve]
         return np.concatenate([
-            column[aligned_curve_func(curve, x, self.grid_size):]
+            column[math.ceil(curve_func(normal_curve, x)):]
             for x, column in enumerate(rect_region.T)  # column wise
         ])
 
@@ -48,9 +49,10 @@ class CFRegions(MatrixRegions):
         region = self.get_region(rect)
         height, width = region.shape
         val_iter = iter(value)
+        normal_curve = [coord * self.grid_size for coord in curve]
 
         for x in range(width):
-            y = aligned_curve_func(curve, x, self.grid_size)
+            y = math.ceil(curve_func(normal_curve, x))
             col_height = height - y
             col_value = np.array(list(islice(val_iter, col_height)))
             region[y:, x] = col_value
