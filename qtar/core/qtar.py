@@ -12,6 +12,7 @@ from qtar.core.imageqt import ImageQT
 from qtar.core.adaptiveregions import adapt_regions
 from qtar.core.container import Container, Key
 from qtar.core.matrixregion import MatrixRegions, divide_into_equal_regions, draw_borders_on
+from qtar.core.zigzag import zigzag_embed_to_regions, zigzag_extract_from_regions
 
 DEFAULT_PARAMS = {
     'homogeneity_threshold': 0.4,
@@ -19,7 +20,7 @@ DEFAULT_PARAMS = {
     'max_block_size':        512,
     'wm_block_size':         8,
     'quant_power':           1,
-    'ch_scale':              4.37,
+    'ch_scale':              8,
     'offset':                (0, 0)
 }
 
@@ -76,6 +77,7 @@ class QtarStego:
         chs_watermark = self.__convert_image_to_chs(img_watermark)
         key.wm_shape = wm_shape
 
+
         chs_stego_img = []
         chs_embedded_dct_regions = []
         for regions_dct, embed_dct_regions, wm_ch in zip(container.chs_regions_dct,
@@ -83,7 +85,7 @@ class QtarStego:
                                                          chs_watermark):
             wm_regions = divide_into_equal_regions(wm_ch, self.wm_block_size)
             wm_dct_regions = self.__dct_regions(wm_regions)
-            embedded_dct_regions = self.__embed_in_regions(embed_dct_regions, wm_dct_regions.matrix)
+            embedded_dct_regions = self.__embed_in_regions(embed_dct_regions, wm_dct_regions)
             idct_regions = MatrixRegions(regions_dct.rects, embedded_dct_regions.matrix)
             stego_img_regions = self.__idct_regions(idct_regions)
             chs_stego_img.append(stego_img_regions.matrix)
@@ -146,30 +148,9 @@ class QtarStego:
     def __define_regions_to_embed(self, regions):
         return adapt_regions(regions, q_power=self.quant_power)
 
-    def __embed_in_regions(self, regions, ch_watermark):
-        regions = MatrixRegions(regions.rects, copy(regions.matrix))
-        wm_iter = ch_watermark.flat
-        stop = False
-        for i in range(0, len(regions)):
-            region = regions[i]
-            size = region.size
-            shape = region.shape
-            region_stego_flat = array(list(islice(wm_iter, size)))
-            if region_stego_flat.size < size:
-                region_flat = list(region.flat)
-                region_stego_flat = append(region_stego_flat, region_flat[region_stego_flat.size:size])
-                stop = True
-            region_stego = region_stego_flat.reshape(shape)
-            regions[i] = region_stego / 255 * self.ch_scale
-            if stop:
-                return regions
-        if not stop:
-            try:
-                next(wm_iter)
-            except StopIteration:
-                return regions
-            warnings.warn("Container capacity is not enough for embedding given secret image."
-                          "Extracted secret image will be not complete.")
+    def __embed_in_regions(self, regions, wm_regions):
+        return zigzag_embed_to_regions(wm_regions, regions)
+
 
     def extract(self, img_stego, key, stages=False):
         img_stego = self.__prepare_image(img_stego, offset=self.offset)
@@ -212,18 +193,7 @@ class QtarStego:
         return regions_extract
 
     def __extract_from_regions(self, regions, wm_shape):
-        regions = MatrixRegions(regions.rects, copy(regions.matrix))
-        region_stego_flat = array([])
-        wm_size = wm_shape[0] * wm_shape[1]
-        for region in regions:
-            region_flat = list(region.flat)
-            region_stego_flat = append(region_stego_flat, region_flat)
-            if region_stego_flat.size >= wm_size:
-                break
-        if region_stego_flat.size <= wm_size:
-            region_stego_flat = append(region_stego_flat, zeros(wm_size - region_stego_flat.size))
-        ch_watermark = region_stego_flat[0:wm_size].reshape(wm_shape)
-        return ch_watermark * 255 / self.ch_scale
+        return zigzag_extract_from_regions(regions, wm_shape, self.wm_block_size).matrix
 
     @staticmethod
     def __convert_image_to_chs(image):
