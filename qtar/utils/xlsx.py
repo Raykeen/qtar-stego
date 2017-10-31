@@ -80,8 +80,11 @@ def __prepare_params(params):
         headers.extend(("x", "y"))
         values.extend((params["offset"][0], params["offset"][1]))
     if "container psnr" in params:
-        headers.append("PSNR")
+        headers.append("CONTAINER PSNR")
         values.append(params["container psnr"])
+    if "watermark psnr" in params:
+        headers.append("WATERMARK PSNR")
+        values.append(params["watermark psnr"])
     if "watermark bcr" in params:
         headers.append("BCR")
         values.append(params["watermark bcr"])
