@@ -103,17 +103,14 @@ def fit_cfregions(dct_regions, q_power, grid_size):
         significant_area_height = nonzero_y_indices.max()
         try:
             significant_area_diagonal = max(x for x, y in zip(nonzero_x_indices, nonzero_y_indices) if x == y)
+
+            curves.append((
+                math.ceil((significant_area_height + 1) / grid_size),
+                math.ceil((significant_area_diagonal + 1) / grid_size),
+                math.ceil((significant_area_width + 1) / grid_size)
+            ))
         except ValueError:
-            curves.append((0, 0, 0))
-
-        curves.append((
-            math.ceil((significant_area_height + 1) / grid_size),
-            math.ceil((significant_area_diagonal + 1) / grid_size),
-            math.ceil((significant_area_width + 1) / grid_size)
-        ))
-
-        if math.ceil(significant_area_diagonal / grid_size) == 0:
-            pass
+            curves.append((height / grid_size, height / grid_size, width / grid_size))
 
     return CFRegions.from_regions(dct_regions, curves, grid_size)
 
