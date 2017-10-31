@@ -8,6 +8,7 @@ from PIL import ImageChops
 from numpy import array, zeros, append
 from scipy.fftpack import dct, idct
 
+from qtar.core.quantizationmatrix import generate_flat_matrix
 from qtar.core.imageqt import ImageQT
 from qtar.core.adaptiveregions import adapt_regions
 from qtar.core.container import Container, Key
@@ -85,7 +86,8 @@ class QtarStego:
                                                          chs_watermark):
             wm_regions = divide_into_equal_regions(wm_ch, self.wm_block_size)
             wm_dct_regions = self.__dct_regions(wm_regions)
-            embedded_dct_regions = self.__embed_in_regions(embed_dct_regions, wm_dct_regions)
+            wm_quantized_regions = self.__quant_regions(wm_dct_regions)
+            embedded_dct_regions = self.__embed_in_regions(embed_dct_regions, wm_quantized_regions)
             idct_regions = MatrixRegions(regions_dct.rects, embedded_dct_regions.matrix)
             stego_img_regions = self.__idct_regions(idct_regions)
             chs_stego_img.append(stego_img_regions.matrix)
@@ -141,6 +143,22 @@ class QtarStego:
             regions_dct[i] = region_dct
         return regions_dct
 
+    def __quant_regions(self, regions):
+        quantized = MatrixRegions(regions.rects, copy(regions.matrix))
+        for i, region in enumerate(quantized):
+            height, width = region.shape
+            q_mx = generate_flat_matrix(max((width, height)))
+            quantized[i] = region / q_mx[0:height, 0:width]
+        return quantized
+
+    def __dequant_regions(self, regions):
+        dequantized = MatrixRegions(regions.rects, copy(regions.matrix))
+        for i, region in enumerate(dequantized):
+            height, width = region.shape
+            q_mx = generate_flat_matrix(max((width, height)))
+            dequantized[i] = region * q_mx[0:height, 0:width]
+        return dequantized
+
     @classmethod
     def __idct_regions(cls, regions):
         return cls.__dct_regions(regions, True)
@@ -150,7 +168,6 @@ class QtarStego:
 
     def __embed_in_regions(self, regions, wm_regions):
         return zigzag_embed_to_regions(wm_regions, regions)
-
 
     def extract(self, img_stego, key, stages=False):
         img_stego = self.__prepare_image(img_stego, offset=self.offset)
@@ -168,8 +185,8 @@ class QtarStego:
             regions = self.__divide_into_regions(ch_stego, qt_key)
             regions_dct = self.__dct_regions(regions)
             regions_extract = self.__define_regions_to_extract(regions_dct, ar_indexes)
-            wm_dct = self.__extract_from_regions(regions_extract, wm_shape)
-            wm_dct_regions = divide_into_equal_regions(wm_dct, wm_block_size)
+            wm_quantized_regions = self.__extract_from_regions(regions_extract, wm_shape, wm_block_size)
+            wm_dct_regions = self.__dequant_regions(wm_quantized_regions)
             wm_regions = self.__idct_regions(wm_dct_regions)
             chs_regions.append(regions)
             chs_regions_extract.append(regions_extract)
@@ -192,8 +209,9 @@ class QtarStego:
         regions_extract, ar_indexes = adapt_regions(regions, ar_indexes=ar_indexes)
         return regions_extract
 
-    def __extract_from_regions(self, regions, wm_shape):
-        return zigzag_extract_from_regions(regions, wm_shape, self.wm_block_size).matrix
+    @staticmethod
+    def __extract_from_regions(regions, wm_shape, wm_block_size):
+        return zigzag_extract_from_regions(regions, wm_shape, wm_block_size)
 
     @staticmethod
     def __convert_image_to_chs(image):

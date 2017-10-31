@@ -7,7 +7,7 @@ import numpy as np
 from qtar.core.matrixregion import MatrixRegions, divide_into_equal_regions
 
 
-SCALE = 200
+SCALE = 1
 
 
 def zigzag_embed_to_regions(wm_regions, mx_regions):

@@ -12,6 +12,21 @@ MATRIX = [
     [72, 92, 95, 98, 112, 100, 103, 99]
 ]
 
+TO_FLAT_MATRIX = [
+    [ 100,  5,  2, 1, 1, 1, 1, 1],
+    [  5,  2,  1, 1, 1, 1, 1, 1],
+    [  2,  1,  1, 1, 1, 1, 1, 1],
+    [  1,  1,  1, 1, 1, 1, 1, 1],
+    [  1,  1,  1, 1, 1, 1, 1, 1],
+    [  1,  1,  1, 1, 1, 1, 1, 1],
+    [  1,  1,  1, 1, 1, 1, 1, 1],
+    [  1,  1,  1, 1, 1, 1, 1, 1]
+]
+
 
 def generate_quantization_matrix(n=8):
     return zoom(asarray(MATRIX), n / 8, order=1)
+
+
+def generate_flat_matrix(n=8):
+    return zoom(asarray(TO_FLAT_MATRIX), n / 8, order=1) * 2
