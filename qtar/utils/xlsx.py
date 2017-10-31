@@ -23,14 +23,14 @@ def save_de_results(file, def_params, new_params, def_metrics, new_metrics):
     except:
         sheet = workbook.create_sheet("issue " + str(issue))
         headers = (*def_params["headers"], *def_metrics["headers"], *new_params["headers"], *new_metrics["headers"])
-        __past_list_in_row(sheet, first_col, first_row, headers)
+        past_list_in_row(sheet, first_col, first_row, headers)
 
     row = first_row + 1
     container = def_params["values"][0]
     watermark = def_params["values"][1]
     while True:
-        container_cell_val = sheet[__cell(first_col, row)].value
-        watermark_cell_val = sheet[__cell(first_col + 1, row)].value
+        container_cell_val = sheet[cell(first_col, row)].value
+        watermark_cell_val = sheet[cell(first_col + 1, row)].value
         if container_cell_val is None:
             break
         if container_cell_val == container and watermark_cell_val == watermark:
@@ -38,16 +38,16 @@ def save_de_results(file, def_params, new_params, def_metrics, new_metrics):
         row += 1
 
     values = (*def_params["values"], *def_metrics["values"], *new_params["values"], *new_metrics["values"])
-    __past_list_in_row(sheet, first_col, row, values)
+    past_list_in_row(sheet, first_col, row, values)
     workbook.save(file)
 
 
-def __cell(col, row):
+def cell(col, row):
     return get_column_letter(col) + str(row)
 
 
-def __cells_range(col1, row1, col2, row2):
-    return __cell(col1, row1) + ":" + __cell(col2, row2)
+def cells_range(col1, row1, col2, row2):
+    return cell(col1, row1) + ":" + cell(col2, row2)
 
 
 def __prepare_params(params):
@@ -98,9 +98,9 @@ def __prepare_params(params):
     }
 
 
-def __past_list_in_row(sheet, col, row, list):
+def past_list_in_row(sheet, col, row, list):
     for item in list:
-        sheet[__cell(col, row)] = item
+        sheet[cell(col, row)] = item
         col += 1
     return col
 

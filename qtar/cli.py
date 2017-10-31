@@ -87,14 +87,14 @@ def embed(params):
     bpp_ = embed_result.bpp
     psnr_container = psnr(container, stego)
 
-    if params['save_stages']:
+    if 'save_stages' in params and params['save_stages']:
         save_stages(embed_result.stages_imgs, STAMP_TEMPLATE.format(
             **params,
             psnr=psnr_container,
             bpp=bpp_
         ) if params['stamp_stages'] else None)
 
-    if params['key']:
+    if 'key' in params and params['key']:
         key.save(params['key'])
         key = Key.open(params['key'])
 
@@ -105,7 +105,7 @@ def embed(params):
         extract_stages_imgs = qtar.extract(stego, key, stages=True)
     extracted_wm = extract_stages_imgs['9-extracted_watermark']
 
-    if params['save_stages']:
+    if 'save_stages' in params and params['save_stages']:
         save_stages(extract_stages_imgs, STAMP_TEMPLATE.format(
             **params,
             psnr=psnr_container,
