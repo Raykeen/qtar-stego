@@ -21,7 +21,8 @@ offset:                {offset}
 """
 METRICS_INFO_TEMPLATE = """
 Metrics:
-PSNR:    {psnr:.4f}
+PSNR container: {psnr_container:.4f}
+PSNR watermark: {psnr_wm:.4f}
 BPP:     {bpp:.4f}
 BCR:     {bcr:.4f}
 WM_SIZE: {width}x{height}"""
@@ -82,12 +83,12 @@ def embed(params):
     key = embed_result.key
 
     bpp_ = embed_result.bpp
-    psnr_ = psnr(container, stego)
+    psnr_container = psnr(container, stego)
 
     if params['save_stages']:
         save_stages(embed_result.stages_imgs, STAMP_TEMPLATE.format(
             **params,
-            psnr=psnr_,
+            psnr=psnr_container,
             bpp=bpp_
         ) if params['stamp_stages'] else None)
 
@@ -105,24 +106,27 @@ def embed(params):
     if params['save_stages']:
         save_stages(extract_stages_imgs, STAMP_TEMPLATE.format(
             **params,
-            psnr=psnr_,
+            psnr=psnr_container,
             bpp=bpp_
         ) if params['stamp_stages'] else None)
 
-    bcr_ = bcr(wm, extracted_wm)
+    bcr_wm = bcr(wm, extracted_wm)
+    psnr_wm = psnr(wm, extracted_wm)
 
     metrics_info = METRICS_INFO_TEMPLATE.format(
-        psnr=psnr_,
+        psnr_container=psnr_container,
+        psnr_wm=psnr_wm,
         bpp=bpp_,
-        bcr=bcr_,
+        bcr=bcr_wm,
         width=wm.size[0],
         height=wm.size[1]
     )
     print(metrics_info)
     print("_"*40+'\n')
     return {
-        "container psnr": psnr_,
-        "watermark bcr": bcr_,
+        "container psnr": psnr_container,
+        "watermark psnr": psnr_wm,
+        "watermark bcr": bcr_wm,
         "container bpp": bpp_
     }
 
