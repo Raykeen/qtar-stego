@@ -49,6 +49,7 @@ def get_param_range(params):
         'min_block_size': range(1, max_b + 1, int_step),
         'max_block_size': range(min_b, max_b + 1, int_step),
         'quant_power': arange(0.1, 1, step),
+        'cf_grid_size': range(min_b, max_b, int_step),
         'ch_scale': arange(0.01, 256, step),
         'offset': product(range(0, container_size[0], int_step), range(0, container_size[1], int_step))
     }[param]

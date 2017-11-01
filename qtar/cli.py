@@ -16,6 +16,7 @@ QTAR params:
 threshold:             {homogeneity_threshold}
 min - max block sizes: {min_block_size} - {max_block_size}
 quantization power:    {quant_power:.2f}
+cf grid size:          {cf_grid_size}
 scale:                 {ch_scale:.2f}
 offset:                {offset}
 """
@@ -29,6 +30,7 @@ WM_SIZE: {width}x{height}"""
 STAMP_TEMPLATE = """threshold:  {homogeneity_threshold}
 block size: {min_block_size}px - {max_block_size}px
 q power:    {quant_power:.2f}
+cf grid:    {cf_grid_size}px
 k:          {ch_scale:.2f}
 offset:     {offset[0]}px {offset[1]}px
 BPP:        {bpp:.4f}
@@ -38,7 +40,7 @@ Key size info (bytes):
 key size:    {key.size}  
 params size: {key.params_size}  
 qt key size: {key.qt_key_size}  
-ar key size: {key.ar_key_size}
+cf key size: {key.cf_key_size}
 """
 
 

@@ -9,6 +9,7 @@ from numpy import array, zeros, append
 from scipy.fftpack import dct, idct
 
 from qtar.core.imageqt import ImageQT
+from qtar.core.curvefitting import fit_cfregions, CFRegions, draw_cf_map
 from qtar.core.adaptiveregions import adapt_regions
 from qtar.core.container import Container, Key
 from qtar.core.matrixregion import MatrixRegions, draw_borders_on
@@ -18,8 +19,10 @@ DEFAULT_PARAMS = {
     'min_block_size':        8,
     'max_block_size':        512,
     'quant_power':           1,
+    'cf_grid_size':          None,
     'ch_scale':              4.37,
-    'offset':                (0, 0)
+    'offset':                (0, 0),
+    'curve_fitting': True,
 }
 
 
@@ -29,14 +32,17 @@ class QtarStego:
                  min_block_size=DEFAULT_PARAMS['min_block_size'],
                  max_block_size=DEFAULT_PARAMS['max_block_size'],
                  quant_power=DEFAULT_PARAMS['quant_power'],
+                 cf_grid_size=DEFAULT_PARAMS['cf_grid_size'],
                  ch_scale=DEFAULT_PARAMS['ch_scale'],
                  offset=DEFAULT_PARAMS['offset']):
         self.homogeneity_threshold = homogeneity_threshold
         self.min_block_size = min_block_size
         self.max_block_size = max_block_size
         self.quant_power = quant_power
+        self.cf_grid_size = cf_grid_size
         self.ch_scale = ch_scale
         self.offset = offset
+        self.curve_fitting = bool(cf_grid_size)
 
     def embed(self, img_container, img_watermark=None, resize_to_fit=True, stages=False):
         size = int(pow(2, int(log2(min(img_container.width, img_container.height)))))
@@ -45,6 +51,7 @@ class QtarStego:
         container_image_mode = img_container.mode
 
         key = Key(ch_scale=self.ch_scale,
+                  cf_grid_size=self.cf_grid_size if self.curve_fitting else None,
                   offset=self.offset)
         container = Container(key=key)
 
@@ -53,13 +60,18 @@ class QtarStego:
             regions = self.__divide_into_regions(ch_image)
             qt_key = regions.key
             regions_dct = self.__dct_regions(regions)
-            regions_embed, ar_indexes = self.__define_regions_to_embed(regions_dct)
+
+            if self.curve_fitting:
+                regions_embed = fit_cfregions(regions_dct, self.quant_power, self.cf_grid_size)
+                key.chs_cf_key.append(regions_embed.curves)
+            else:
+                regions_embed, ar_indexes = adapt_regions(regions_dct, q_power=self.quant_power)
+                key.chs_ar_key.append(ar_indexes)
 
             chs_regions.append(regions)
             container.chs_regions_dct.append(regions_dct)
             container.chs_regions_dct_embed.append(regions_embed)
             key.chs_qt_key.append(qt_key)
-            key.chs_ar_key.append(ar_indexes)
 
         available_space = container.available_space
         wm_shape = img_watermark.size
@@ -97,7 +109,7 @@ class QtarStego:
                 "5-watermark": img_watermark,
                 "6-stego_image": img_stego
             }
-        return StegoEmbedResult(img_stego, key, container.fact_bpp, img_container, img_watermark,  stages_imgs)
+        return StegoEmbedResult(img_stego, key, container.fact_bpp, img_container, img_watermark, stages_imgs)
 
     @staticmethod
     def __prepare_image(image, shape=None, offset=None, mode=None):
@@ -135,33 +147,39 @@ class QtarStego:
     def __idct_regions(cls, regions):
         return cls.__dct_regions(regions, True)
 
-    def __define_regions_to_embed(self, regions):
-        return adapt_regions(regions, q_power=self.quant_power)
-
     def __embed_in_regions(self, regions, ch_watermark):
-        regions = MatrixRegions(regions.rects, copy(regions.matrix))
+        if self.curve_fitting:
+            regions = CFRegions(regions.rects, copy(regions.matrix), regions.curves, self.cf_grid_size)
+        else:
+            regions = MatrixRegions(regions.rects, copy(regions.matrix))
+
         wm_iter = ch_watermark.flat
-        stop = False
+
         for i in range(0, len(regions)):
             region = regions[i]
             size = region.size
             shape = region.shape
-            region_stego_flat = array(list(islice(wm_iter, size)))
-            if region_stego_flat.size < size:
-                region_flat = list(region.flat)
-                region_stego_flat = append(region_stego_flat, region_flat[region_stego_flat.size:size])
-                stop = True
-            region_stego = region_stego_flat.reshape(shape)
-            regions[i] = region_stego / 255 * self.ch_scale
-            if stop:
-                return regions
-        if not stop:
-            try:
-                next(wm_iter)
-            except StopIteration:
-                return regions
+            region_stego = array(list(islice(wm_iter, size)))
+
+            if region_stego.size == 0:
+                if size == 0:
+                    continue
+                else:
+                    return regions
+
+            region_stego = region_stego / 255 * self.ch_scale
+            region_stego = append(region_stego, region.flat[region_stego.size:size])
+            region_stego = region_stego.reshape(shape)
+            regions[i] = region_stego
+
+        try:
+            next(wm_iter)
+        except StopIteration:
+            pass
+        else:
             warnings.warn("Container capacity is not enough for embedding given secret image."
-                          "Extracted secret image will be not complete.")
+                          "The extracted secret image will be incomplete.")
+        return regions
 
     def extract(self, img_stego, key, stages=False):
         img_stego = self.__prepare_image(img_stego, offset=self.offset)
@@ -172,12 +190,20 @@ class QtarStego:
         chs_regions_extract = []
         chs_watermark = []
         for ch, ch_stego in enumerate(chs_stego):
-            qt_key = key.chs_qt_key[ch]
-            ar_indexes = key.chs_ar_key[ch]
             wm_shape = key.wm_shape
+
+            qt_key = key.chs_qt_key[ch]
             regions = self.__divide_into_regions(ch_stego, qt_key)
+
             regions_dct = self.__dct_regions(regions)
-            regions_extract = self.__define_regions_to_extract(regions_dct, ar_indexes)
+
+            if self.curve_fitting:
+                cf_key = key.chs_cf_key[ch]
+                regions_extract = CFRegions.from_regions(regions_dct, cf_key, self.cf_grid_size)
+            else:
+                ar_indexes = key.chs_ar_key[ch]
+                regions_extract, ar_indexes = adapt_regions(regions_dct, ar_indexes=ar_indexes)
+
             ch_watermark = self.__extract_from_regions(regions_extract, wm_shape)
             chs_regions.append(regions)
             chs_regions_extract.append(regions_extract)
@@ -185,8 +211,8 @@ class QtarStego:
 
         if stages:
             stages_imgs = {
-                "7-quad_tree":  self.__regions_to_image(chs_regions, stego_image_mode,
-                                                        borders=True, only_right_bottom=True),
+                "7-quad_tree": self.__regions_to_image(chs_regions, stego_image_mode,
+                                                       borders=True, only_right_bottom=True),
                 "8-adaptive_regions": self.__regions_to_image(chs_regions_extract, stego_image_mode,
                                                               borders=True, factor=10),
                 "9-extracted_watermark": self.__chs_to_image(chs_watermark, stego_image_mode)
@@ -195,23 +221,17 @@ class QtarStego:
         else:
             return self.__chs_to_image(chs_watermark, stego_image_mode)
 
-    @staticmethod
-    def __define_regions_to_extract(regions, ar_indexes):
-        regions_extract, ar_indexes = adapt_regions(regions, ar_indexes=ar_indexes)
-        return regions_extract
-
     def __extract_from_regions(self, regions, wm_shape):
-        regions = MatrixRegions(regions.rects, copy(regions.matrix))
-        region_stego_flat = array([])
+        region_stego = array([])
         wm_size = wm_shape[0] * wm_shape[1]
         for region in regions:
-            region_flat = list(region.flat)
-            region_stego_flat = append(region_stego_flat, region_flat)
-            if region_stego_flat.size >= wm_size:
+            region = region.flatten()
+            region_stego = append(region_stego, region)
+            if region_stego.size >= wm_size:
                 break
-        if region_stego_flat.size <= wm_size:
-            region_stego_flat = append(region_stego_flat, zeros(wm_size - region_stego_flat.size))
-        ch_watermark = region_stego_flat[0:wm_size].reshape(wm_shape)
+        else:
+            region_stego = append(region_stego, zeros(wm_size - region_stego.size))
+        ch_watermark = region_stego[0:wm_size].reshape(wm_shape)
         return ch_watermark * 255 / self.ch_scale
 
     @staticmethod
@@ -231,26 +251,36 @@ class QtarStego:
 
         return image
 
-    @staticmethod
-    def __draw_borders(chs_regions, only_right_bottom=False):
+    def __draw_borders(self, chs_regions, only_right_bottom=False):
         chs_matrix = [ch_regions.matrix for ch_regions in chs_regions]
         max_value = max([ch_matrix.max() for ch_matrix in chs_matrix])
 
+        is_cf_regions = type(chs_regions[0]) is CFRegions
+
         for ch_id in range(0, len(chs_matrix)):
             for ch_regions in chs_regions:
-                chs_matrix[ch_id] = draw_borders_on(chs_matrix[ch_id], ch_regions.rects, 0, only_right_bottom)
-            chs_matrix[ch_id] = draw_borders_on(chs_matrix[ch_id], chs_regions[ch_id].rects, max_value,
-                                                only_right_bottom)
+                if is_cf_regions:
+                    chs_matrix[ch_id] = draw_cf_map(
+                        CFRegions(ch_regions.rects, chs_matrix[ch_id], ch_regions.curves, self.cf_grid_size),
+                        0, only_right_bottom)
+                else:
+                    chs_matrix[ch_id] = draw_borders_on(chs_matrix[ch_id], ch_regions.rects, 0, only_right_bottom)
+            if is_cf_regions:
+                chs_matrix[ch_id] = draw_cf_map(
+                    CFRegions(chs_regions[ch_id].rects, chs_matrix[ch_id], chs_regions[ch_id].curves, self.cf_grid_size),
+                    max_value, only_right_bottom)
+            else:
+                chs_matrix[ch_id] = draw_borders_on(chs_matrix[ch_id], chs_regions[ch_id].rects, max_value,
+                                                    only_right_bottom)
         return chs_matrix
 
-    @classmethod
-    def __regions_to_image(cls, chs_regions, mode, offset=None, factor=1, borders=False, only_right_bottom=False):
+    def __regions_to_image(self, chs_regions, mode, offset=None, factor=1, borders=False, only_right_bottom=False):
         if borders:
-            chs_matrix = cls.__draw_borders(chs_regions, only_right_bottom)
+            chs_matrix = self.__draw_borders(chs_regions, only_right_bottom)
         else:
             chs_matrix = [ch_regions.matrix for ch_regions in chs_regions]
 
-        return cls.__chs_to_image(chs_matrix, mode, offset, factor)
+        return self.__chs_to_image(chs_matrix, mode, offset, factor)
 
     @property
     def params(self):
@@ -259,6 +289,7 @@ class QtarStego:
             'min_block_size':        self.min_block_size,
             'max_block_size':        self.max_block_size,
             'quant_power':           self.quant_power,
+            'cf_grid_size':          self.cf_grid_size,
             'ch_scale':              self.ch_scale,
             'offset':                self.offset
         }
@@ -269,6 +300,7 @@ class QtarStego:
                          params['min_block_size'],
                          params['max_block_size'],
                          params['quant_power'],
+                         params['cf_grid_size'],
                          params['ch_scale'],
                          params['offset'])
 
