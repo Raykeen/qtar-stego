@@ -3,12 +3,12 @@ from unittest import TestCase
 from numpy.testing import assert_array_equal
 import numpy as np
 
-from qtar.core.zigzag import generate_zigzag_mx
+from qtar.core.zigzag import zigzag
 
 
 class TestZigzag(TestCase):
-    def test_generate_zigzag_mx(self):
-        actual = generate_zigzag_mx((5, 5))
+    def test_zigzag(self):
+        actual = zigzag((5, 5))
         ideal = np.array([
             [0,  1,  5,  6,  14],
             [2,  4,  7,  13, 15],

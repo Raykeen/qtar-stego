@@ -1,6 +1,6 @@
-from itertools import count, chain, zip_longest, islice
+from itertools import count, chain, zip_longest
+from functools import lru_cache
 from copy import copy
-import math
 
 import numpy as np
 
@@ -21,7 +21,7 @@ def zigzag_embed_to_regions(wm_regions, mx_regions):
         np_wm_data = np.array(wm_data)[::-1]
 
         if size > np_wm_data.size:
-            zz_region = zigzag_mx(region)
+            zz_region = zigzag_from_mx(region)
             np_wm_data = np.append(zz_region[0:size - np_wm_data.size], np_wm_data)
 
         result_regions[i] = zigzag_to_mx(np_wm_data, region.shape)
@@ -33,8 +33,8 @@ def zigzag_extract_from_regions(mx_regions, wm_shape, wm_block_size):
     wm_mx = np.zeros(wm_shape)
     wm_regions = divide_into_equal_regions(wm_mx, wm_block_size)
     wm_regions_sizes = [wm_region.size for wm_region in wm_regions]
-    wm_data_by_regions = [zigzag_mx(region)[::-1] for region in mx_regions]
-    wm_data_flat = filter(lambda x: x != '', chain.from_iterable(zip_longest(*wm_data_by_regions, fillvalue='')))
+    wm_data_by_regions = [zigzag_from_mx(region)[::-1] for region in mx_regions]
+    wm_data_flat = interweave(wm_data_by_regions)
     wm_flat_regions = [[] for _ in range(len(wm_regions))]
     wm_flat_regions_filled = [False for _ in range(len(wm_regions))]
 
@@ -75,38 +75,51 @@ def sort_wm_by_regions(wm_iter, mx_regions):
     return wm_data_by_regions
 
 
-def zigzag_mx(mx):
-    return mx.flat[zigzag_order(mx.shape)]
+def zigzag_from_mx(mx):
+    zz = np.zeros(mx.size)
+    zz.flat[zigzag(mx.shape)] = mx
+    return zz
 
 
 def zigzag_to_mx(zz, shape):
-    return zz[generate_zigzag_mx(shape)]
+    return zz[zigzag(shape)]
 
 
 def zigzag_order_regions(regions):
-    zigzags = [iter(zigzag_mx(region)) for region in regions]
-    while zigzags:
-        for i, zz in enumerate(zigzags):
+    zigzags = [zigzag_from_mx(region) for region in regions]
+    return interweave(zigzags)
+
+
+def interweave(arrays):
+    iters = [iter(array) for array in arrays]
+    finished = [False for _ in iters]
+    while not all(finished):
+        for i, it, is_finished in zip(count(), iters, finished):
+            if is_finished:
+                continue
             try:
-                yield next(zz)
+                yield next(it)
             except StopIteration:
-                del zigzags[i]
+                finished[i] = True
 
 
-def zigzag_order(shape):
-    height, width = shape
+@lru_cache(maxsize=None)
+def zigzag(shape):
+    h, w = shape
 
-    def sort_f(index):
-        y, x = divmod(index, width)
-        return x + y, y if (x + y) % 2 else -y
+    def move(i, j, n):
+        if j < (n - 1):
+            return max(0, i-1), j+1
+        else:
+            return i+1, j
 
-    index_order = sorted(range(height * width), key=sort_f)
-    return index_order
+    a = np.zeros((h, w))
+    x, y = 0, 0
+    for v in range(w * h):
+        a[y][x] = v
+        if (x + y) & 1:
+            x, y = move(x, y, h)
+        else:
+            y, x = move(y, x, w)
 
-
-def generate_zigzag_mx(shape):
-    zz_order = zigzag_order(shape)
-    zz_order_resorted = sorted(enumerate(zz_order), key=lambda c: c[1])
-    zz_mx_flat = list(zip(*zz_order_resorted))[0]
-
-    return np.array(zz_mx_flat).reshape(shape)
+    return a.astype(int)
