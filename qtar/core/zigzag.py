@@ -18,11 +18,11 @@ def zigzag_embed_to_regions(wm_regions, mx_regions):
 
     for i, region, wm_data in zip(count(), mx_regions, wm_by_regions):
         size = region.size
-        np_wm_data = np.array(wm_data)
+        np_wm_data = np.array(wm_data)[::-1]
 
         if size > np_wm_data.size:
             zz_region = zigzag_mx(region)
-            np_wm_data = np.append(np_wm_data, zz_region[np_wm_data.size:size])
+            np_wm_data = np.append(zz_region[0:size - np_wm_data.size], np_wm_data)
 
         result_regions[i] = zigzag_to_mx(np_wm_data, region.shape)
 
@@ -33,7 +33,7 @@ def zigzag_extract_from_regions(mx_regions, wm_shape, wm_block_size):
     wm_mx = np.zeros(wm_shape)
     wm_regions = divide_into_equal_regions(wm_mx, wm_block_size)
     wm_regions_sizes = [wm_region.size for wm_region in wm_regions]
-    wm_data_by_regions = [zigzag_mx(region) for region in mx_regions]
+    wm_data_by_regions = [zigzag_mx(region)[::-1] for region in mx_regions]
     wm_data_flat = filter(lambda x: x != '', chain.from_iterable(zip_longest(*wm_data_by_regions, fillvalue='')))
     wm_flat_regions = [[] for _ in range(len(wm_regions))]
     wm_flat_regions_filled = [False for _ in range(len(wm_regions))]
