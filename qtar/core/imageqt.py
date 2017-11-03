@@ -116,7 +116,8 @@ class ImageQT(MatrixRegions):
 
 class ImageQTPM(ImageQT):
     def __init__(self, matrix, min_size=None, max_size=None, threshold=None, key=None, permutation=None):
-        if permutation is None:
+        self.has_permutation = permutation is not None
+        if not self.has_permutation:
             self.permutation = np.arange(matrix.size).reshape(matrix.shape)
         else:
             self.permutation = permutation
@@ -125,7 +126,7 @@ class ImageQTPM(ImageQT):
 
         super().__init__(matrix, min_size, max_size, threshold, key)
 
-        if key and permutation is not None:
+        if key and self.has_permutation:
             self.matrix = permutate(self.matrix, permutation)
 
         self.rects = [leave.rect for leave in self.leaves]
@@ -149,7 +150,7 @@ class ImageQTPM(ImageQT):
             self.build_tree(child)
 
     def build_tree_from_key(self, node, key):
-        to_permutate = self.permutation is None
+        to_permutate = not self.has_permutation
         subivide = key.pop(0)
         self.all_nodes.append(node)
         if subivide:
