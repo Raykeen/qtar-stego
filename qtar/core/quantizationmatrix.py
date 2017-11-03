@@ -1,5 +1,6 @@
 from scipy.ndimage.interpolation import zoom
 from numpy import asarray
+from functools import lru_cache
 
 MATRIX = [
     [16, 11, 10, 16, 24, 40, 51, 61],
@@ -12,6 +13,6 @@ MATRIX = [
     [72, 92, 95, 98, 112, 100, 103, 99]
 ]
 
-
+@lru_cache(maxsize=None)
 def generate_quantization_matrix(n=8):
     return zoom(asarray(MATRIX), n / 8, order=1)
