@@ -21,6 +21,8 @@ argparser.add_argument('-q', '--quant_power', metavar='power',
 argparser.add_argument('-cf', '--cf_grid_size', metavar='size',
                        type=int, default=DEFAULT_PARAMS['cf_grid_size'],
                        help='grid size to align curve fitting   int[1, min_block_size], square of 2')
+argparser.add_argument('-pm', '--use_permutations', action='store_true',
+                       help='use permutation mode')
 argparser.add_argument('-s', '--ch_scale', metavar='scale',
                        type=float, default=DEFAULT_PARAMS['ch_scale'],
                        help='scale to ch_scale watermark pixels values before embedding   float(0, 255]')

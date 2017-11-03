@@ -41,6 +41,7 @@ key size:    {key.size}
 params size: {key.params_size}  
 qt key size: {key.qt_key_size}  
 cf key size: {key.cf_key_size}
+pm key size: {key.pm_fix_key_size}
 """
 
 

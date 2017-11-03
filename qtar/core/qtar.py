@@ -3,14 +3,14 @@ from itertools import islice
 from math import log2, pow, sqrt
 from copy import copy
 
-from PIL import Image
-from PIL import ImageChops
+from PIL import Image, ImageChops
 from numpy import array, zeros, append
 from scipy.fftpack import dct, idct
 
-from qtar.core.imageqt import ImageQT
+from qtar.core.imageqt import ImageQT, ImageQTPM
 from qtar.core.curvefitting import fit_cfregions, CFRegions, draw_cf_map
 from qtar.core.adaptiveregions import adapt_regions
+from qtar.core.permutation import reverse_permutation, fix_diff, get_diff_fix
 from qtar.core.container import Container, Key
 from qtar.core.matrixregion import MatrixRegions, draw_borders_on
 
@@ -23,6 +23,7 @@ DEFAULT_PARAMS = {
     'ch_scale':              4.37,
     'offset':                (0, 0),
     'curve_fitting': True,
+    'use_permutations':      False
 }
 
 
@@ -34,7 +35,8 @@ class QtarStego:
                  quant_power=DEFAULT_PARAMS['quant_power'],
                  cf_grid_size=DEFAULT_PARAMS['cf_grid_size'],
                  ch_scale=DEFAULT_PARAMS['ch_scale'],
-                 offset=DEFAULT_PARAMS['offset']):
+                 offset=DEFAULT_PARAMS['offset'],
+                 use_permutations=DEFAULT_PARAMS['use_permutations']):
         self.homogeneity_threshold = homogeneity_threshold
         self.min_block_size = min_block_size
         self.max_block_size = max_block_size
@@ -43,22 +45,34 @@ class QtarStego:
         self.ch_scale = ch_scale
         self.offset = offset
         self.curve_fitting = bool(cf_grid_size)
+        self.use_permutations = use_permutations
 
     def embed(self, img_container, img_watermark=None, resize_to_fit=True, stages=False):
         size = int(pow(2, int(log2(min(img_container.width, img_container.height)))))
+
+        max_b = min(self.max_block_size, *img_container.size)
+
         img_container = self.__prepare_image(img_container, shape=(size, size), offset=self.offset)
         chs_container = self.__convert_image_to_chs(img_container)
         container_image_mode = img_container.mode
 
         key = Key(ch_scale=self.ch_scale,
+                  offset=self.offset,
                   cf_grid_size=self.cf_grid_size if self.curve_fitting else None,
-                  offset=self.offset)
+                  use_permutations=self.use_permutations,
+                  container_shape=(size, size))
         container = Container(key=key)
 
         chs_regions = []
+        chs_pm_key = []
         for ch, ch_image in enumerate(chs_container):
-            regions = self.__divide_into_regions(ch_image)
+            if self.use_permutations:
+                regions = ImageQTPM(ch_image, self.min_block_size, max_b, self.homogeneity_threshold)
+                chs_pm_key.append(regions.permutation)
+            else:
+                regions = ImageQT(ch_image, self.min_block_size, max_b, self.homogeneity_threshold)
             qt_key = regions.key
+
             regions_dct = self.__dct_regions(regions)
 
             if self.curve_fitting:
@@ -84,14 +98,32 @@ class QtarStego:
 
         chs_stego_img = []
         chs_embedded_dct_regions = []
-        for regions_dct, embed_dct_regions, wm_ch in zip(container.chs_regions_dct,
-                                                         container.chs_regions_dct_embed,
-                                                         chs_watermark):
+
+        chs_count = len(chs_container)
+        for ch in range(chs_count):
+            regions_dct = container.chs_regions_dct[ch]
+            embed_dct_regions = container.chs_regions_dct_embed[ch]
+            wm_ch = chs_watermark[ch]
+
             embedded_dct_regions = self.__embed_in_regions(embed_dct_regions, wm_ch)
-            idct_regions = MatrixRegions(regions_dct.rects, embedded_dct_regions.matrix)
-            stego_img_regions = self.__idct_regions(idct_regions)
-            chs_stego_img.append(stego_img_regions.matrix)
             chs_embedded_dct_regions.append(embedded_dct_regions)
+
+            idct_regions = MatrixRegions(regions_dct.rects, embedded_dct_regions.matrix)
+            stego_img_mx = self.__idct_regions(idct_regions).matrix
+
+            if self.use_permutations:
+                pm_key = chs_pm_key[ch]
+                qt_key = key.chs_qt_key[ch]
+
+                stego_img_mx = reverse_permutation(stego_img_mx, pm_key)
+
+                compressed_stego_img_mx = array(Image.fromarray(copy(stego_img_mx)).convert('L'))
+                distorted_regions = ImageQTPM(compressed_stego_img_mx, key=qt_key)
+                ch_pm_fix = get_diff_fix(pm_key, distorted_regions.permutation, distorted_regions.rects)
+
+                key.chs_pm_fix_key.append(ch_pm_fix)
+
+            chs_stego_img.append(stego_img_mx)
 
         img_stego = self.__chs_to_image(chs_stego_img, container_image_mode)
         img_stego = self.__prepare_image(img_stego, offset=(-self.offset[0], -self.offset[1]))
@@ -121,14 +153,6 @@ class QtarStego:
         if mode is not None:
             image = image.convert(mode)
         return image
-
-    def __divide_into_regions(self, ch_image, key=None):
-        if key is None:
-            size = min(self.max_block_size, ch_image.shape[0])
-            regions = ImageQT(ch_image, self.min_block_size, size, self.homogeneity_threshold)
-        else:
-            regions = ImageQT(ch_image, key=key)
-        return regions
 
     @staticmethod
     def __dct_regions(regions, inverse=False):
@@ -182,7 +206,7 @@ class QtarStego:
         return regions
 
     def extract(self, img_stego, key, stages=False):
-        img_stego = self.__prepare_image(img_stego, offset=self.offset)
+        img_stego = self.__prepare_image(img_stego, offset=key.offset)
         chs_stego = self.__convert_image_to_chs(img_stego)
         stego_image_mode = img_stego.mode
 
@@ -193,7 +217,15 @@ class QtarStego:
             wm_shape = key.wm_shape
 
             qt_key = key.chs_qt_key[ch]
-            regions = self.__divide_into_regions(ch_stego, qt_key)
+
+            if self.use_permutations:
+                pm_fix_key = key.chs_pm_fix_key[ch]
+                distorted_regions = ImageQTPM(copy(ch_stego), key=qt_key)
+                distorted_pm_mx_regions = MatrixRegions(distorted_regions.rects, distorted_regions.permutation)
+                pm_key = fix_diff(distorted_pm_mx_regions, pm_fix_key).matrix
+                regions = ImageQTPM(copy(ch_stego), key=qt_key, permutation=pm_key)
+            else:
+                regions = ImageQT(ch_stego, key=qt_key)
 
             regions_dct = self.__dct_regions(regions)
 
@@ -291,7 +323,8 @@ class QtarStego:
             'quant_power':           self.quant_power,
             'cf_grid_size':          self.cf_grid_size,
             'ch_scale':              self.ch_scale,
-            'offset':                self.offset
+            'offset':                self.offset,
+            'use_permutations':      self.use_permutations
         }
 
     @staticmethod
@@ -302,7 +335,8 @@ class QtarStego:
                          params['quant_power'],
                          params['cf_grid_size'],
                          params['ch_scale'],
-                         params['offset'])
+                         params['offset'],
+                         params['use_permutations'])
 
 
 class StegoEmbedResult:

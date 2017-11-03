@@ -1,8 +1,10 @@
 from copy import copy
+from math import sqrt
 
 import numpy as np
 
 from qtar.core.matrixregion import MatrixRegions
+from qtar.core.permutation import permutate
 
 
 class QtNode:
@@ -55,19 +57,19 @@ class ImageQT(MatrixRegions):
 
         if key is None:
             self.key = []
-            self.__build_tree(QtNode(None, (0, 0, matrix.shape[1], matrix.shape[0])))
+            self.build_tree(QtNode(None, (0, 0, matrix.shape[1], matrix.shape[0])))
         else:
             self.min_size = 0
             self.max_size = 0
-            self.__build_tree_from_key(QtNode(None, (0, 0, matrix.shape[1], matrix.shape[0])), copy(key))
+            self.build_tree_from_key(QtNode(None, (0, 0, matrix.shape[1], matrix.shape[0])), copy(key))
         self.rects = [leave.rect for leave in self.leaves]
 
-    def __build_tree(self, node):
+    def build_tree(self, node):
         too_big = node.size > self.max_size
         too_small = node.size <= self.min_size
         self.all_nodes.append(node)
 
-        if (not too_big and self.__spans_homogeneity(node.rect)) or too_small:
+        if (not too_big and self.spans_homogeneity(node.rect)) or too_small:
             if node.depth > self.max_depth:
                 self.max_depth = node.depth
             self.key.append(False)
@@ -77,15 +79,15 @@ class ImageQT(MatrixRegions):
         self.key.append(True)
         children = node.subdivide()
         for child in children:
-            self.__build_tree(child)
+            self.build_tree(child)
 
-    def __build_tree_from_key(self, node, key):
+    def build_tree_from_key(self, node, key):
         subivide = key.pop(0)
         self.all_nodes.append(node)
         if subivide:
             children = node.subdivide()
             for child in children:
-                self.__build_tree_from_key(child, key)
+                self.build_tree_from_key(child, key)
         else:
             if node.depth > self.max_depth:
                 self.max_depth = node.depth
@@ -95,7 +97,7 @@ class ImageQT(MatrixRegions):
                 self.min_size = node.size
             self.leaves.append(node)
 
-    def __spans_homogeneity(self, rect):
+    def spans_homogeneity(self, rect):
         region = self.get_region(rect)
         max_value = np.amax(region)
         min_value = np.amin(region)
@@ -110,6 +112,87 @@ class ImageQT(MatrixRegions):
                 if brightness <= bright_type_max:
                     return homogeneity < self.threshold[i] * 256
             return homogeneity < self.threshold[-1] * 256
+
+
+class ImageQTPM(ImageQT):
+    def __init__(self, matrix, min_size=None, max_size=None, threshold=None, key=None, permutation=None):
+        if permutation is None:
+            self.permutation = np.arange(matrix.size).reshape(matrix.shape)
+        else:
+            self.permutation = permutation
+
+        self.original_mx = copy(matrix)
+
+        super().__init__(matrix, min_size, max_size, threshold, key)
+
+        if key and permutation is not None:
+            self.matrix = permutate(self.matrix, permutation)
+
+        self.rects = [leave.rect for leave in self.leaves]
+
+    def build_tree(self, node):
+        too_big = node.size > self.max_size
+        too_small = node.size <= self.min_size
+        self.all_nodes.append(node)
+
+        if (not too_big and self.spans_homogeneity(node.rect)) or too_small:
+            if node.depth > self.max_depth:
+                self.max_depth = node.depth
+            self.key.append(False)
+            self.leaves.append(node)
+            return
+
+        self.align(node.rect)
+        self.key.append(True)
+        children = node.subdivide()
+        for child in children:
+            self.build_tree(child)
+
+    def build_tree_from_key(self, node, key):
+        to_permutate = self.permutation is None
+        subivide = key.pop(0)
+        self.all_nodes.append(node)
+        if subivide:
+            if to_permutate:
+                self.align(node.rect)
+            children = node.subdivide()
+            for child in children:
+                self.build_tree_from_key(child, key)
+        else:
+            if node.depth > self.max_depth:
+                self.max_depth = node.depth
+            if node.size > self.max_size:
+                self.max_size = node.size
+            if node.size < self.min_size:
+                self.min_size = node.size
+            self.leaves.append(node)
+
+    def align(self, rect):
+        perm_regions = MatrixRegions([], self.permutation)
+        perm_region = perm_regions.get_region(rect)
+        region = self.get_region(rect)
+        regions_flat = region.flat
+        perm_region_flat_sorted = sorted(perm_region.flat, key=lambda k: self.original_mx.flat[k])
+        size = len(regions_flat)
+        subregion_size = int(size / 4)
+        perm_subregions = []
+
+        for i in range(4):
+            first = subregion_size * i
+            last = first + subregion_size
+            flat_subregion_perm = np.array(sorted(perm_region_flat_sorted[first:last]))
+            subregion_shape = int(sqrt(subregion_size))
+            subregion_perm = flat_subregion_perm.reshape((subregion_shape, subregion_shape))
+            perm_subregions.append(subregion_perm)
+
+        top = np.concatenate((perm_subregions[0], perm_subregions[1]), axis=1)
+        bottom = np.concatenate((perm_subregions[2], perm_subregions[3]), axis=1)
+        perm_region = np.concatenate((top, bottom), axis=0)
+        perm_regions.set_region(rect, perm_region)
+
+        region_flat = [self.original_mx.flat[p] for p in perm_region]
+        region = np.array(region_flat).reshape(perm_region.shape)
+        self.set_region(rect, region)
 
 
 def parse_qt_key(key, block_count=1, result_key=None):

@@ -4,7 +4,7 @@ import numpy as np
 
 from qtar.core.imageqt import parse_qt_key
 
-PARAMS_STRUCT = '=fbiiiib'
+PARAMS_STRUCT = '=?fbiiiiiib'
 CF_POINTS_COUNT = 3
 
 
@@ -14,26 +14,33 @@ class Key:
                  cf_grid_size=None,
                  offset=None,
                  chs_qt_key=None,
+                 chs_pm_fix_key=None,
                  chs_ar_key=None,
                  chs_cf_key=None,
-                 wm_shape=None):
+                 wm_shape=None,
+                 container_shape=None,
+                 use_permutations=False):
         self.ch_scale = ch_scale
         self.cf_grid_size = cf_grid_size
         self.offset = offset
         self.chs_qt_key = chs_qt_key or []
+        self.chs_pm_fix_key = chs_pm_fix_key or []
         self.chs_cf_key = chs_cf_key or []
         self.chs_ar_key = chs_ar_key or []
-
         self.wm_shape = wm_shape
+        self.container_shape = container_shape
+        self.use_permutations = use_permutations
 
     @property
     def params_bytes(self):
         chs_count = len(self.chs_qt_key)
         return struct.pack(PARAMS_STRUCT,
+                           self.use_permutations,
                            self.ch_scale,
                            self.cf_grid_size if self.cf_grid_size else 0,
                            *self.offset,
                            *self.wm_shape,
+                           *self.container_shape,
                            chs_count)
 
     @staticmethod
@@ -54,6 +61,22 @@ class Key:
         return result
 
     @property
+    def chs_pm_fix_key_bytes(self):
+        result = []
+
+        for pm_fix_key in self.chs_pm_fix_key:
+            pm_fix_key_bytes = bytes()
+            pm_fix_key_len = int_to_byte(len(pm_fix_key))
+            for fix in pm_fix_key:
+
+                fix_len = len(fix)
+                pm_fix_key_bytes += (int_to_byte(fix_len)
+                                     + np.array(fix).astype(np.uint32).tobytes())
+
+            result.append(pm_fix_key_len + pm_fix_key_bytes)
+        return result
+
+    @property
     def chs_ar_key_bytes(self):
         return [ints_to_bytes(ar_key, np.uint8) for ar_key in self.chs_ar_key]
 
@@ -65,7 +88,6 @@ class Key:
             flat_key = np.array(cf_key).flat
             key_bytes = ints_to_bytes(flat_key, self.cf_key_type(self.cf_grid_size))
             result.append(key_bytes)
-
         return result
 
     @property
@@ -77,6 +99,10 @@ class Key:
         return size_of_chs(self.chs_qt_key_bytes)
 
     @property
+    def pm_fix_key_size(self):
+        return size_of_chs(self.chs_pm_fix_key_bytes)
+
+    @property
     def ar_key_size(self):
         return size_of_chs(self.chs_ar_key_bytes)
 
@@ -86,14 +112,21 @@ class Key:
 
     @property
     def size(self):
-        return self.params_size + self.qt_key_size + self.cf_key_size + self.ar_key_size
+        return self.params_size + self.qt_key_size + self.pm_fix_key_size + self.ar_key_size + self.cf_key_size
 
     def save(self, path):
         with open(path, 'wb') as file:
             key_bytes = self.params_bytes
             for ch_n in range(len(self.chs_qt_key)):
-                key_bytes += (self.chs_qt_key_bytes[ch_n] +
-                              (self.chs_cf_key_bytes[ch_n] if self.cf_grid_size else self.chs_ar_key_bytes[ch_n]))
+                key_bytes += self.chs_qt_key_bytes[ch_n]
+
+                if self.cf_grid_size:
+                    key_bytes += self.chs_cf_key_bytes[ch_n]
+                else:
+                    key_bytes += self.chs_ar_key_bytes[ch_n]
+
+                if self.use_permutations:
+                    key_bytes += self.chs_pm_fix_key_bytes[ch_n]
 
             file.write(key_bytes)
         return len(key_bytes)
@@ -102,13 +135,15 @@ class Key:
     def open(cls, path):
         with open(path, 'rb') as file:
             params_bytes = file.read(struct.calcsize(PARAMS_STRUCT))
-            ch_scale, cf_grid_size, x, y, wm_w, wm_h, chs_count = struct.unpack(PARAMS_STRUCT, params_bytes)
+            use_permutations, ch_scale, cf_grid_size, x, y, wm_w, wm_h, c_w, c_h, chs_count = struct.unpack(PARAMS_STRUCT, params_bytes)
             offset = (x, y)
             wm_shape = (wm_w, wm_h)
+            container_shape = (c_w, c_h)
 
             chs_qt_key = []
             chs_ar_key = []
             chs_cf_key = []
+            chs_pm_fix_key = []
 
             for ch in range(chs_count):
                 qt_key_bytes_size = read_int(file)
@@ -124,7 +159,18 @@ class Key:
                     ar_key = np.fromfile(file, np.uint8, block_count).tolist()
                     chs_ar_key.append(ar_key)
 
-        return cls(ch_scale, cf_grid_size, offset, chs_qt_key, chs_ar_key, chs_cf_key, wm_shape)
+                if use_permutations:
+                    pm_fix_key_len = read_int(file)
+                    pm_fix_key = []
+                    for i in range(pm_fix_key_len):
+                        fix_len = read_int(file)
+                        pm_fix_key.append(np.fromfile(file, np.uint32, fix_len))
+
+                    chs_pm_fix_key.append(pm_fix_key)
+
+        return cls(ch_scale, cf_grid_size, offset,
+                   chs_qt_key, chs_pm_fix_key, chs_ar_key, chs_cf_key,
+                   wm_shape, container_shape, use_permutations)
 
 
 class Container:
@@ -184,3 +230,8 @@ def read_bits(file, size):
 
 def size_of_chs(chs):
     return sum(len(ch) for ch in chs)
+
+
+def read_uint8(file, size):
+    bytes_ = file.read(size)
+    return np.frombuffer(bytes_, np.uint8)
