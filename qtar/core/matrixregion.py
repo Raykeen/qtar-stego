@@ -26,19 +26,19 @@ class MatrixRegions(object):
 
     @property
     def total_size(self):
-            total_size = 0
-            for i in range(len(self.rects)):
-                total_size += self.rect_size(i)
-            return total_size
+        return sum(self.rect_size(i) for i in range(len(self.rects)))
 
     def rect_size(self, i):
-        x0, y0, x1, y1 = self.rects[i]
-        return (x1 - x0) * (y1 - y0)
+        return rect_size(self.rects[i])
 
 
 def draw_borders_on(matrix, rects, value, only_right_bottom=False):
     matrix = np.copy(matrix)
+
     for rect in rects:
+        if rect_size(rect) == 0:
+            continue
+
         x0, y0, x1, y1 = rect
         matrix[y1-1, x0:x1] = value
         matrix[y0:y1, x1-1] = value
@@ -51,3 +51,8 @@ def draw_borders_on(matrix, rects, value, only_right_bottom=False):
 
 def draw_borders(regions, value, only_right_bottom=False):
     return draw_borders_on(regions.matrix, regions.rects, value, only_right_bottom)
+
+
+def rect_size(rect):
+    x0, y0, x1, y1 = rect
+    return (x1 - x0) * (y1 - y0)

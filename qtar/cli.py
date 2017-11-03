@@ -2,7 +2,7 @@ import os
 
 from PIL import Image
 
-from qtar.core.qtar import QtarStego
+from qtar.core.qtar import QtarStego, NoSpaceError
 from qtar.core.argparser import argparser
 from qtar.core.container import Key
 from qtar.optimization.metrics import psnr, bcr
@@ -79,8 +79,12 @@ def embed(params):
 
     qtar = QtarStego.from_dict(params)
 
-    with benchmark("embedded in "):
-        embed_result = qtar.embed(container, watermark, stages=True)
+    try:
+        with benchmark("embedded in "):
+            embed_result = qtar.embed(container, watermark, stages=True)
+    except NoSpaceError as e:
+        print(e)
+        return
 
     container = embed_result.img_container
     stego = embed_result.img_stego

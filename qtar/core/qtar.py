@@ -88,6 +88,10 @@ class QtarStego:
             key.chs_qt_key.append(qt_key)
 
         available_space = container.available_space
+
+        if available_space == 0:
+            raise NoSpaceError("There is no space for embedding. Try other parameters.")
+
         wm_shape = img_watermark.size
         if resize_to_fit:
             wm_size = int(sqrt(available_space))
@@ -347,3 +351,6 @@ class StegoEmbedResult:
         self.key = key
         self.bpp = bpp
         self.stages_imgs = stages_imgs
+
+
+class NoSpaceError(Exception): pass
