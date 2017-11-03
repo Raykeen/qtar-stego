@@ -13,6 +13,7 @@ STAGES_DIR = "stages\\"
 EMBEDDING_INFO_TEMPLATE = """Embedding {watermark} in {container} using QTAR
 
 QTAR params:
+pm mode:               {use_permutations}
 threshold:             {homogeneity_threshold}
 min - max block sizes: {min_block_size} - {max_block_size}
 quantization power:    {quant_power:.2f}
@@ -27,7 +28,8 @@ PSNR watermark: {psnr_wm:.4f}
 BPP:     {bpp:.4f}
 BCR:     {bcr:.4f}
 WM_SIZE: {width}x{height}"""
-STAMP_TEMPLATE = """threshold:  {homogeneity_threshold}
+STAMP_TEMPLATE = """pm mode:    {use_permutations}
+threshold:  {homogeneity_threshold}
 block size: {min_block_size}px - {max_block_size}px
 q power:    {quant_power:.2f}
 cf grid:    {cf_grid_size}px
