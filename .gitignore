@@ -2,6 +2,7 @@
 env/
 __pycache__/
 *.exe
+*.whl
 *.xlsx
 *.log
 *.qtarkey
