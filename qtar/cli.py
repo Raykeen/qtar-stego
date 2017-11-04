@@ -114,6 +114,7 @@ def embed(params):
         save_stages(extract_stages_imgs, STAMP_TEMPLATE.format(
             **params,
             psnr=psnr_container,
+            ssim=ssim_container,
             bpp=bpp_
         ) if params['stamp_stages'] else None)
 
