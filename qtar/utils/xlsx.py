@@ -82,11 +82,17 @@ def __prepare_params(params):
     if "container psnr" in params:
         headers.append("CONTAINER PSNR")
         values.append(params["container psnr"])
+    if "container ssim" in params:
+        headers.append("CONTAINER SSIM")
+        values.append(params["container ssim"])
     if "watermark psnr" in params:
         headers.append("WATERMARK PSNR")
         values.append(params["watermark psnr"])
+    if "watermark ssim" in params:
+        headers.append("WATERMARK SSIM")
+        values.append(params["watermark ssim"])
     if "watermark bcr" in params:
-        headers.append("BCR")
+        headers.append("WATERMARK BCR")
         values.append(params["watermark bcr"])
     if "container bpp" in params:
         headers.append("BPP")
