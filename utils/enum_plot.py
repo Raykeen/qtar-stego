@@ -33,11 +33,14 @@ def bpp_psnr_plot(bpp, psnr, bpp0, psnr0):
     return plt
 
 
-def map_plot(x):
+def map_plot(x, name):
     plt.figure()
     size = int(sqrt(len(x)))
     x2d = np.array(x).reshape((size, size))
+    plt.xlabel("x (px)")
+    plt.ylabel("y (px)")
     plt.imshow(x2d)
+    plt.colorbar(label=name)
     return plt
 
 
@@ -53,8 +56,8 @@ def main():
         x0, y0, psnr0, bcr0, bpp0 = zero_values
 
         bpp_psnr_plot(bpp, psnr, bpp0, psnr0).savefig('plots\\bpp_psnr_'+name+'.png')
-        map_plot(psnr).savefig('plots\\psnr_map_'+name+'.png')
-        map_plot(bpp).savefig('plots\\bpp_map_'+name+'.png')
+        map_plot(psnr, "PSNR").savefig('plots\\psnr_map_'+name+'.png')
+        map_plot(bpp, "BPP").savefig('plots\\bpp_map_'+name+'.png')
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ from PIL import Image
 from qtar.core.qtar import QtarStego
 from qtar.core.argparser import argparser
 from qtar.core.container import Key
-from qtar.optimization.metrics import psnr, bcr
+from qtar.optimization.metrics import psnr, bcr, ssim
 from qtar.utils import benchmark
 from qtar.utils.stamp import stamp_image
 
@@ -23,7 +23,9 @@ offset:                {offset}
 METRICS_INFO_TEMPLATE = """
 Metrics:
 PSNR container: {psnr_container:.4f}
+SSIM container: {ssim_container:.4f}
 PSNR watermark: {psnr_wm:.4f}
+SSIM watermark: {ssim_wm:.4f}
 BPP:     {bpp:.4f}
 BCR:     {bcr:.4f}
 WM_SIZE: {width}x{height}"""
@@ -34,7 +36,8 @@ q power:    {quant_power:.2f}
 k:          {ch_scale:.2f}
 offset:     {offset[0]}px {offset[1]}px
 BPP:        {bpp:.4f}
-PSNR:       {psnr:.4f}"""
+PSNR:       {psnr:.4f}
+SSIM:       {ssim:.4f}"""
 KEY_INFO_TEMPLATE = """  
 Key size info (bytes):  
 key size:    {key.size}  
@@ -66,10 +69,10 @@ def main():
 def embed(params):
     container = Image.open(params['container'])
     if params['container_size']:
-        container = container.resize((params['container_size'][0], params['container_size'][1]), Image.BILINEAR)
+        container = container.resize(params['container_size'], Image.BILINEAR)
     watermark = Image.open(params['watermark'])
     if params['watermark_size']:
-        watermark = watermark.resize((params['watermark_size'][0], params['watermark_size'][1]), Image.BILINEAR)
+        watermark = watermark.resize(params['watermark_size'], Image.BILINEAR)
 
     embedding_info = EMBEDDING_INFO_TEMPLATE.format(**params)
     print(embedding_info)
@@ -86,15 +89,17 @@ def embed(params):
 
     bpp_ = embed_result.bpp
     psnr_container = psnr(container, stego)
+    ssim_container = ssim(container, stego)
 
-    if params['save_stages']:
+    if 'save_stages' in params and params['save_stages']:
         save_stages(embed_result.stages_imgs, STAMP_TEMPLATE.format(
             **params,
             psnr=psnr_container,
+            ssim=ssim_container,
             bpp=bpp_
         ) if params['stamp_stages'] else None)
 
-    if params['key']:
+    if 'key' in params and params['key']:
         key.save(params['key'])
         key = Key.open(params['key'])
 
@@ -105,7 +110,7 @@ def embed(params):
         extract_stages_imgs = qtar.extract(stego, key, stages=True)
     extracted_wm = extract_stages_imgs['9-extracted_watermark']
 
-    if params['save_stages']:
+    if 'save_stages' in params and params['save_stages']:
         save_stages(extract_stages_imgs, STAMP_TEMPLATE.format(
             **params,
             psnr=psnr_container,
@@ -114,10 +119,13 @@ def embed(params):
 
     bcr_wm = bcr(wm, extracted_wm)
     psnr_wm = psnr(wm, extracted_wm)
+    ssim_wm = ssim(wm, extracted_wm)
 
     metrics_info = METRICS_INFO_TEMPLATE.format(
         psnr_container=psnr_container,
+        ssim_container=ssim_container,
         psnr_wm=psnr_wm,
+        ssim_wm=ssim_wm,
         bpp=bpp_,
         bcr=bcr_wm,
         width=wm.size[0],
@@ -127,7 +135,9 @@ def embed(params):
     print("_"*40+'\n')
     return {
         "container psnr": psnr_container,
+        "container ssim": ssim_container,
         "watermark psnr": psnr_wm,
+        "watermark ssim": ssim_wm,
         "watermark bcr": bcr_wm,
         "container bpp": bpp_
     }

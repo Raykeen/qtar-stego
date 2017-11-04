@@ -1,28 +1,22 @@
 import numpy as np
 from math import sqrt, log10
+from skimage.measure import compare_ssim, compare_psnr
 
 
-def psnr(array1, array2, max=255):
-    flat_arr1 = np.array(array1).flatten()
-    flat_arr2 = np.array(array2).flatten()
-    len1 = len(flat_arr1)
-    len2 = len(flat_arr2)
+def psnr(img1, img2):
+    return compare_psnr(np.array(img1), np.array(img2))
 
-    if len1 != len2:
-        raise Exception('Arrays must have the same size')
 
-    MSE = 0
+def ssim(img1, img2):
+    np_img1 = np.array(img1)
+    np_img2 = np.array(img2)
 
-    for i in range(len1):
-        MSE += (int(flat_arr1[i]) - int(flat_arr2[i])) ** 2
-
-    MSE = float(MSE) / float(len1)
-
-    if MSE == 0:
-        return float('inf')
+    if len(np_img1.shape) == 3:
+        multichannel = True
     else:
-        PSNR = 20 * log10(float(max) / sqrt(MSE))
-        return PSNR
+        multichannel = False
+
+    return compare_ssim(np_img1, np_img2, multichannel=multichannel)
 
 
 def bcr(array1, array2):
