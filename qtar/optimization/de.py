@@ -3,7 +3,7 @@ from copy import copy
 from PIL import Image
 from scipy.optimize import differential_evolution
 
-from qtar.core.argparser import argparser
+from qtar.core.argparser import create_argpaser
 from qtar.optimization.deissues import ISSUES
 from qtar.cli import embed
 from qtar.utils import benchmark
@@ -25,6 +25,8 @@ Optimization issue:
 
 def main():
     issue_descriptions = ['%d: %s' % (i+1, Issue.desc) for i, Issue in enumerate(ISSUES)]
+
+    argparser = create_argpaser()
     argparser.add_argument('issue', type=int, default=0,
                            help='0: Run all optimizations\n' + '\n'.join(issue_descriptions))
     argparser.add_argument('-xls', '--xls_path', metavar='path',

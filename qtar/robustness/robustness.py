@@ -4,11 +4,12 @@ from PIL import Image
 from qtar.optimization.metrics import psnr, bcr
 
 from qtar.core.qtar import QtarStego
-from qtar.core.argparser import argparser
+from qtar.core.argparser import create_argpaser
 from qtar.robustness.filters import filters
 
 
 def main():
+    argparser = create_argpaser()
     args = argparser.parse_args()
     params = vars(args)
     test_robustness(params)

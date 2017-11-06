@@ -1,4 +1,5 @@
 from timeit import default_timer as timer
+import ntpath
 
 
 class benchmark(object):
@@ -15,3 +16,7 @@ class benchmark(object):
         t = timer() - self.start
         print(("%s : " + self.fmt + " seconds") % (self.msg, t))
         self.time = t
+
+
+def extract_filename(path):
+    return ntpath.basename(path).split(".")[0]

@@ -13,10 +13,10 @@ def save_de_results(file, def_params, new_params, def_metrics, new_metrics):
         workbook.guess_types = True
 
     issue = def_params["issue"]
-    def_params = __prepare_params(def_params)
-    new_params = __prepare_params(new_params)
-    def_metrics = __prepare_params(def_metrics)
-    new_metrics = __prepare_params(new_metrics)
+    def_params = prepare_params(def_params)
+    new_params = prepare_params(new_params)
+    def_metrics = prepare_params(def_metrics)
+    new_metrics = prepare_params(new_metrics)
 
     try:
         sheet = workbook.get_sheet_by_name("issue " + str(issue))
@@ -50,7 +50,7 @@ def cells_range(col1, row1, col2, row2):
     return cell(col1, row1) + ":" + cell(col2, row2)
 
 
-def __prepare_params(params):
+def prepare_params(params):
     headers = []
     values = []
     if "container" in params:
@@ -68,7 +68,7 @@ def __prepare_params(params):
             headers.append("th")
             values.append(th)
     if "min_block_size" in params and "max_block_size" in params:
-        headers.extend(("min", "max"))
+        headers.extend(("min, px", "max, px"))
         values.extend((params["min_block_size"], params["max_block_size"]))
     if "quant_power" in params:
         headers.append("qp")
@@ -77,25 +77,25 @@ def __prepare_params(params):
         headers.append("scale")
         values.append(params["ch_scale"])
     if "offset" in params:
-        headers.extend(("x", "y"))
+        headers.extend(("x, px", "y, px"))
         values.extend((params["offset"][0], params["offset"][1]))
     if "container psnr" in params:
-        headers.append("CONTAINER PSNR")
+        headers.append("container PSNR, db")
         values.append(params["container psnr"])
     if "container ssim" in params:
-        headers.append("CONTAINER SSIM")
+        headers.append("container SSIM")
         values.append(params["container ssim"])
     if "watermark psnr" in params:
-        headers.append("WATERMARK PSNR")
+        headers.append("watermark PSNR, db")
         values.append(params["watermark psnr"])
     if "watermark ssim" in params:
-        headers.append("WATERMARK SSIM")
+        headers.append("watermark SSIM")
         values.append(params["watermark ssim"])
     if "watermark bcr" in params:
-        headers.append("WATERMARK BCR")
+        headers.append("watermark BCR")
         values.append(params["watermark bcr"])
     if "container bpp" in params:
-        headers.append("BPP")
+        headers.append("capacity, BPP")
         values.append(params["container bpp"])
 
     return {
@@ -110,3 +110,7 @@ def past_list_in_row(sheet, col, row, list):
         col += 1
     return col
 
+
+def write_table(sheet, table):
+    for row in table:
+        sheet.append(row)

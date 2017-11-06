@@ -1,5 +1,4 @@
 from copy import copy
-import ntpath
 from itertools import product
 import math
 
@@ -9,12 +8,14 @@ from numpy import arange
 from PIL import Image
 
 from qtar.cli import embed
-from qtar.core.argparser import argparser
+from qtar.core.argparser import create_argpaser
 from qtar.utils.xlsx import past_list_in_row
 from qtar.core.qtar import DEFAULT_PARAMS
+from qtar.utils import extract_filename
 
 
 def main():
+    argparser = create_argpaser()
     argparser.add_argument('-rc', '--container_size', metavar='container_size',
                            type=int, nargs=2, default=None,
                            help='resize container image')
@@ -94,10 +95,6 @@ def to_xlsx(results, params):
         row += 1
 
     workbook.save(path)
-
-
-def extract_filename(path):
-    return ntpath.basename(path).split(".")[0]
 
 
 if __name__ == "__main__":

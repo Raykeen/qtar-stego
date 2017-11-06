@@ -3,7 +3,7 @@ import os
 from PIL import Image
 
 from qtar.core.qtar import QtarStego, NoSpaceError
-from qtar.core.argparser import argparser
+from qtar.core.argparser import create_argpaser
 from qtar.core.container import Key
 from qtar.optimization.metrics import psnr, bcr, ssim
 from qtar.utils import benchmark
@@ -51,6 +51,7 @@ pm key size: {key.pm_fix_key_size}
 
 
 def main():
+    argparser = create_argpaser()
     argparser.add_argument('-rc', '--container_size', metavar='container_size',
                            type=int, nargs=2, default=None,
                            help='resize container image')
