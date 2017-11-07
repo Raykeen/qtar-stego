@@ -8,27 +8,41 @@ from qtar.optimization.metrics import bcr, psnr
 
 
 class OptIssue1:
-    desc = 'Issue 1\nfunc: PSNR\nparams: threshold for 3 brightness levels'
-    bounds = ((0, 1), (0, 1), (0, 1))
+    desc = 'Issue 1\n' \
+           'func: -((psnr - def_psnr) / def_psnr + (bpp - def_bpp) / def_bpp)\n' \
+           'params: threshold'
+    bounds = [(0, 1)]
 
-    np = 17
-    cr = 0.7122
-    f = 0.6301
-    iter = 60
+    np = 13
+    cr = 0.7450
+    f = 0.9096
+    iter = 31
 
     @staticmethod
-    def func(threshold, container, watermark, params, default_metrics):
+    def func(th, container, watermark, params, default_metrics):
+        def_psnr = default_metrics['container psnr']
+        def_bpp = default_metrics['container bpp']
         params = copy(params)
-        params['homogeneity_threshold'] = threshold
-        qtar = QtarStego.from_dict(threshold)
+        params['homogeneity_threshold'] = th[0]
+        qtar = QtarStego.from_dict(params)
+
         embed_result = qtar.embed(container, watermark)
-        container = embed_result.img_container
-        stego = embed_result.img_stego
-        return -psnr(container, stego)
+
+        container_image = embed_result.img_container
+        stego_image = embed_result.img_stego
+        psnr_ = psnr(container_image, stego_image)
+        bpp_ = embed_result.bpp
+
+        func = -((psnr_ - def_psnr) / def_psnr + (bpp_ - def_bpp) / def_bpp)
+
+        if psnr_ < def_psnr or bpp_ < def_bpp:
+            return func + 1000
+
+        return func
 
     @staticmethod
     def get_new_params(result):
-        return {"homogeneity_threshold": result.x}
+        return {"homogeneity_threshold": result.x[0]}
 
 
 class OptIssue2:

@@ -1,6 +1,6 @@
-Lenna.png Garold.png
-Tiger.png Flower.png
-F15.png Flower.png
+lenna_g.png Garold.png
+tiger_g.png Flower.png
+F15_g.png Flower.png
 cameraman_g.png clouds_g.png
 clouds_g.png jetplane_g.png
 jetplane_g.png lake_g.png
