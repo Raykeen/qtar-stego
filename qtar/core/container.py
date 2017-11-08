@@ -4,7 +4,7 @@ import numpy as np
 
 from qtar.core.imageqt import parse_qt_key
 
-PARAMS_STRUCT = '=?fbiiiiiib'
+PARAMS_STRUCT = '=?fbiiiiiiib'
 CF_POINTS_COUNT = 3
 
 
@@ -18,8 +18,10 @@ class Key:
                  chs_ar_key=None,
                  chs_cf_key=None,
                  wm_shape=None,
+                 wm_block_size=None,
                  container_shape=None,
                  use_permutations=False):
+        self.wm_block_size = wm_block_size
         self.ch_scale = ch_scale
         self.cf_grid_size = cf_grid_size
         self.offset = offset
@@ -40,6 +42,7 @@ class Key:
                            self.cf_grid_size if self.cf_grid_size else 0,
                            *self.offset,
                            *self.wm_shape,
+                           self.wm_block_size if self.wm_block_size else 0,
                            *self.container_shape,
                            chs_count)
 
@@ -135,7 +138,16 @@ class Key:
     def open(cls, path):
         with open(path, 'rb') as file:
             params_bytes = file.read(struct.calcsize(PARAMS_STRUCT))
-            use_permutations, ch_scale, cf_grid_size, x, y, wm_w, wm_h, c_w, c_h, chs_count = struct.unpack(PARAMS_STRUCT, params_bytes)
+
+            (use_permutations,
+             ch_scale,
+             cf_grid_size,
+             x, y,
+             wm_w, wm_h,
+             wm_block_size,
+             c_w, c_h,
+             chs_count) = struct.unpack(PARAMS_STRUCT, params_bytes)
+
             offset = (x, y)
             wm_shape = (wm_w, wm_h)
             container_shape = (c_w, c_h)
@@ -170,7 +182,7 @@ class Key:
 
         return cls(ch_scale, cf_grid_size, offset,
                    chs_qt_key, chs_pm_fix_key, chs_ar_key, chs_cf_key,
-                   wm_shape, container_shape, use_permutations)
+                   wm_shape, wm_block_size, container_shape, use_permutations)
 
 
 class Container:

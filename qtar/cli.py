@@ -16,6 +16,7 @@ QTAR params:
 pm mode:               {use_permutations}
 threshold:             {homogeneity_threshold}
 min - max block sizes: {min_block_size} - {max_block_size}
+watermark block size:  {wm_block_size}
 quantization power:    {quant_power:.2f}
 cf grid size:          {cf_grid_size}
 scale:                 {ch_scale:.2f}
@@ -33,6 +34,7 @@ WM_SIZE: {width}x{height}"""
 STAMP_TEMPLATE = """pm mode:    {use_permutations}
 threshold:  {homogeneity_threshold}
 block size: {min_block_size}px - {max_block_size}px
+wm block:   {wm_block_size}px
 q power:    {quant_power:.2f}
 cf grid:    {cf_grid_size}px
 k:          {ch_scale:.2f}

@@ -20,6 +20,9 @@ def create_argpaser(with_images=True):
     argparser.add_argument('-max', '--max_block_size', metavar='size',
                            type=int, default=DEFAULT_PARAMS['max_block_size'],
                            help='max block size   int[min_block_size, image_size], square of 2')
+    argparser.add_argument('-wms', '--wm_block_size', metavar='size',
+                           type=int, default=DEFAULT_PARAMS['wm_block_size'],
+                           help='watermark block size   int[1, wm_size], square of 2')
     argparser.add_argument('-q', '--quant_power', metavar='power',
                            type=float, default=DEFAULT_PARAMS['quant_power'],
                            help='quantization power   float(0, 1]')
