@@ -1,30 +1,31 @@
 from timeit import default_timer as timer
-from math import sqrt
+from math import sqrt, ceil
 from copy import copy
 
 from numpy import array
 
 from qtar.core.qtar import QtarStego, DEFAULT_PARAMS
 from qtar.optimization.metrics import bcr, psnr
+from qtar.utils import classproperty
 
 
 class OptIssueBase:
     desc = 'Base Issue\n' \
            'func: None\n' \
            'params: None'
-    bounds = []
+    bounds = [(0, 1)]
 
     np = 1
     cr = 0.5
     f = 0.5
-    iter = 1
+    evaluations = 2
 
-    evaluations = 0
+    evaluations_done = 0
     time = None
 
-    @classmethod
-    def evaluations_total(cls):
-        return (cls.iter + 1) * cls.np
+    @classproperty
+    def iter(cls):
+        return ceil(cls.evaluations / (cls.np * len(cls.bounds)) - 1)
 
     @classmethod
     def func(cls, *args):
@@ -35,10 +36,10 @@ class OptIssueBase:
         if cls.time is None:
             cls.time = timer()
 
-        cls.evaluations += 1
+        cls.evaluations_done += 1
 
         new_time = timer()
-        callback(cls.evaluations, cls.evaluations_total(), (new_time - cls.time) / cls.evaluations)
+        callback(cls.evaluations_done, cls.evaluations, (new_time - cls.time) / cls.evaluations_done)
 
 
 class OptIssue1(OptIssueBase):
@@ -50,7 +51,7 @@ class OptIssue1(OptIssueBase):
     np = 13
     cr = 0.7450
     f = 0.9096
-    iter = 31
+    evaluations = 416
 
     @classmethod
     def func(cls, th, container, watermark, params, default_metrics, callback):
@@ -88,7 +89,7 @@ class OptIssue2(OptIssueBase):
     np = 17
     cr = 0.7122
     f = 0.6301
-    iter = 60
+    evaluations = 3111
 
     @classmethod
     def func(cls, threshold, container, watermark, params, default_metrics, callback):
@@ -115,7 +116,7 @@ class OptIssue3(OptIssueBase):
     np = 10
     cr = 0.4862
     f = 1.1922
-    iter = 40
+    evaluations = 820
 
     @classmethod
     def func(cls, offset, container, watermark, params, default_metrics, callback):
@@ -142,7 +143,7 @@ class OptIssue4(OptIssueBase):
     np = 10
     cr = 0.4862
     f = 1.1922
-    iter = 40
+    evaluations = 820
 
     @classmethod
     def func(cls, offset, container, watermark, params, default_metrics, callback):
@@ -169,7 +170,7 @@ class OptIssue5(OptIssueBase):
     np = 17
     cr = 0.7122
     f = 0.6301
-    iter = 60
+    evaluations = 3111
 
     @classmethod
     def func(cls, args, container, watermark, params, default_metrics, callback):
@@ -206,7 +207,7 @@ class OptIssue6(OptIssueBase):
     np = 17
     cr = 0.7122
     f = 0.6301
-    iter = 60
+    evaluations = 3111
 
     @classmethod
     def func(cls, args, container, watermark, params, default_metrics, callback):
@@ -244,7 +245,7 @@ class OptIssue7(OptIssueBase):
     np = 12
     cr = 0.2368
     f = 0.6702
-    iter = 166
+    evaluations = 14028
 
     @classmethod
     def func(cls, args, container, watermark, params, default_metrics, callback):
@@ -306,7 +307,7 @@ class OptIssue8(OptIssueBase):
     np = 12
     cr = 0.2368
     f = 0.6702
-    iter = 166
+    evaluations = 14028
 
     @classmethod
     def func(cls, args, container, watermark, params, default_metrics, callback):
@@ -363,7 +364,7 @@ class OptIssue9(OptIssueBase):
     np = 12
     cr = 0.2368
     f = 0.6702
-    iter = 166
+    evaluations = 10020
 
     @classmethod
     def func(cls, args, container, watermark, params, default_metrics, callback):
@@ -410,7 +411,7 @@ class OptIssue10(OptIssueBase):
     np = 12
     cr = 0.2368
     f = 0.6702
-    iter = 166
+    evaluations = 6012
 
     @classmethod
     def func(cls, args, container, watermark, params, default_metrics, callback):

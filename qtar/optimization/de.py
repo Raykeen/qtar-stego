@@ -71,9 +71,11 @@ def run_de(params, Issue):
                                            popsize=Issue.np,
                                            mutation=Issue.f,
                                            recombination=Issue.cr,
+                                           tol=-1,
+                                           atol=-1,
                                            polish=False,
                                            maxiter=Issue.iter)
-    print(de_result.nit)
+    print("Iterations done: %s; DE message: %s" % (de_result.nit, de_result.message))
     new_params = Issue.get_new_params(de_result)
 
     print("\nResult:")
