@@ -20,13 +20,14 @@ DEFAULT_PARAMS = {
     'homogeneity_threshold': 0.4,
     'min_block_size':        8,
     'max_block_size':        512,
-    'wm_block_size':         None,
     'quant_power':           1,
-    'cf_grid_size':          None,
     'ch_scale':              4.37,
     'offset':                (0, 0),
-    'curve_fitting':         True,
-    'use_permutations':      False
+    'pm_mode':               False,
+    'cf_mode':               False,
+    'cf_grid_size':          8,
+    'wmdct_mode':            False,
+    'wmdct_block_size':      8
 }
 
 
@@ -35,23 +36,25 @@ class QtarStego:
                  homogeneity_threshold=DEFAULT_PARAMS['homogeneity_threshold'],
                  min_block_size=DEFAULT_PARAMS['min_block_size'],
                  max_block_size=DEFAULT_PARAMS['max_block_size'],
-                 wm_block_size=DEFAULT_PARAMS['wm_block_size'],
                  quant_power=DEFAULT_PARAMS['quant_power'],
-                 cf_grid_size=DEFAULT_PARAMS['cf_grid_size'],
                  ch_scale=DEFAULT_PARAMS['ch_scale'],
                  offset=DEFAULT_PARAMS['offset'],
-                 use_permutations=DEFAULT_PARAMS['use_permutations']):
+                 pm_mode=DEFAULT_PARAMS['pm_mode'],
+                 cf_mode=DEFAULT_PARAMS['cf_mode'],
+                 cf_grid_size=DEFAULT_PARAMS['cf_grid_size'],
+                 wmdct_mode=DEFAULT_PARAMS['wmdct_mode'],
+                 wmdct_block_size=DEFAULT_PARAMS['wmdct_block_size']):
         self.homogeneity_threshold = homogeneity_threshold
         self.min_block_size = min_block_size
         self.max_block_size = max_block_size
-        self.wm_block_size = wm_block_size
         self.quant_power = quant_power
-        self.cf_grid_size = cf_grid_size
         self.ch_scale = ch_scale
         self.offset = offset
-        self.curve_fitting = bool(cf_grid_size)
-        self.wm_dct = bool(wm_block_size)
-        self.use_permutations = use_permutations
+        self.pm_mode = pm_mode
+        self.cf_mode = cf_mode
+        self.cf_grid_size = cf_grid_size
+        self.wmdct_mode = wmdct_mode
+        self.wmdct_block_size = wmdct_block_size
 
     def embed(self, img_container, img_watermark=None, resize_to_fit=True, stages=False):
         size = int(pow(2, int(log2(min(img_container.width, img_container.height)))))
@@ -64,16 +67,18 @@ class QtarStego:
 
         key = Key(ch_scale=self.ch_scale,
                   offset=self.offset,
-                  cf_grid_size=self.cf_grid_size if self.curve_fitting else None,
-                  use_permutations=self.use_permutations,
-                  container_shape=(size, size),
-                  wm_block_size=self.wm_block_size)
+                  pm_mode=self.pm_mode,
+                  container_shape=(size, size) if self.pm_mode else None,
+                  cf_mode=self.cf_mode,
+                  cf_grid_size=self.cf_grid_size if self.cf_mode else None,
+                  wmdct_mode=self.wmdct_mode,
+                  wmdct_block_size=self.wmdct_block_size if self.wmdct_mode else None)
         container = Container(key=key)
 
         chs_regions = []
         chs_pm_key = []
         for ch, ch_image in enumerate(chs_container):
-            if self.use_permutations:
+            if self.pm_mode:
                 regions = ImageQTPM(ch_image, self.min_block_size, max_b, self.homogeneity_threshold)
                 chs_pm_key.append(regions.permutation)
             else:
@@ -82,7 +87,7 @@ class QtarStego:
 
             regions_dct = self.__dct_regions(regions)
 
-            if self.curve_fitting:
+            if self.cf_mode:
                 regions_embed = fit_cfregions(regions_dct, self.quant_power, self.cf_grid_size)
                 key.chs_cf_key.append(regions_embed.curves)
             else:
@@ -116,8 +121,8 @@ class QtarStego:
             embed_dct_regions = container.chs_regions_dct_embed[ch]
             wm_ch = chs_watermark[ch]
 
-            if self.wm_dct:
-                wm_regions = divide_into_equal_regions(wm_ch, self.wm_block_size)
+            if self.wmdct_mode:
+                wm_regions = divide_into_equal_regions(wm_ch, self.wmdct_block_size)
                 wm_dct_regions = self.__dct_regions(wm_regions)
                 wm_ch = self.__quant_regions(wm_dct_regions)
 
@@ -127,7 +132,7 @@ class QtarStego:
             idct_regions = MatrixRegions(regions_dct.rects, embedded_dct_regions.matrix)
             stego_img_mx = self.__idct_regions(idct_regions).matrix
 
-            if self.use_permutations:
+            if self.pm_mode:
                 pm_key = chs_pm_key[ch]
                 qt_key = key.chs_qt_key[ch]
 
@@ -206,12 +211,12 @@ class QtarStego:
         return cls.__dct_regions(regions, True)
 
     def __embed_in_regions(self, regions, ch_watermark):
-        if self.curve_fitting:
+        if self.cf_mode:
             regions = CFRegions(regions.rects, copy(regions.matrix), regions.curves, self.cf_grid_size)
         else:
             regions = MatrixRegions(regions.rects, copy(regions.matrix))
 
-        if self.wm_dct:
+        if self.wmdct_mode:
             return zigzag_embed_to_regions(ch_watermark, regions)
 
         wm_iter = ch_watermark.flat
@@ -242,20 +247,19 @@ class QtarStego:
                           "The extracted secret image will be incomplete.")
         return regions
 
-    def extract(self, img_stego, key, stages=False):
-        img_stego = self.__prepare_image(img_stego, offset=key.offset)
-        chs_stego = self.__convert_image_to_chs(img_stego)
+    @classmethod
+    def extract(cls, img_stego, key, stages=False):
+        img_stego = cls.__prepare_image(img_stego, offset=key.offset)
+        chs_stego = cls.__convert_image_to_chs(img_stego)
         stego_image_mode = img_stego.mode
 
         chs_regions = []
         chs_regions_extract = []
         chs_watermark = []
         for ch, ch_stego in enumerate(chs_stego):
-            wm_shape = key.wm_shape
-
             qt_key = key.chs_qt_key[ch]
 
-            if key.use_permutations:
+            if key.pm_mode:
                 pm_fix_key = key.chs_pm_fix_key[ch]
                 distorted_regions = ImageQTPM(copy(ch_stego), key=qt_key)
                 distorted_pm_mx_regions = MatrixRegions(distorted_regions.rects, distorted_regions.permutation)
@@ -264,22 +268,22 @@ class QtarStego:
             else:
                 regions = ImageQT(ch_stego, key=qt_key)
 
-            regions_dct = self.__dct_regions(regions)
+            regions_dct = cls.__dct_regions(regions)
 
-            if bool(key.cf_grid_size):
+            if key.cf_mode:
                 cf_key = key.chs_cf_key[ch]
                 regions_extract = CFRegions.from_regions(regions_dct, cf_key, key.cf_grid_size)
             else:
                 ar_indexes = key.chs_ar_key[ch]
                 regions_extract, ar_indexes = adapt_regions(regions_dct, ar_indexes=ar_indexes)
 
-            if bool(key.wm_block_size):
-                wm_quantized_regions = self.__extract_from_regions(regions_extract, wm_shape, key.wm_block_size)
-                wm_dct_regions = self.__dequant_regions(wm_quantized_regions)
-                wm_regions = self.__idct_regions(wm_dct_regions)
+            if key.wmdct_mode:
+                wm_quantized_regions = cls.__extract_from_regions(regions_extract, key)
+                wm_dct_regions = cls.__dequant_regions(wm_quantized_regions)
+                wm_regions = cls.__idct_regions(wm_dct_regions)
                 ch_watermark = wm_regions.matrix
             else:
-                ch_watermark = self.__extract_from_regions(regions_extract, wm_shape)
+                ch_watermark = cls.__extract_from_regions(regions_extract, key)
 
             chs_regions.append(regions)
             chs_regions_extract.append(regions_extract)
@@ -287,22 +291,23 @@ class QtarStego:
 
         if stages:
             stages_imgs = {
-                "7-quad_tree": self.__regions_to_image(chs_regions, stego_image_mode,
-                                                       borders=True, only_right_bottom=True),
-                "8-adaptive_regions": self.__regions_to_image(chs_regions_extract, stego_image_mode,
-                                                              borders=True, factor=10),
-                "9-extracted_watermark": self.__chs_to_image(chs_watermark, stego_image_mode)
+                "7-quad_tree": cls.__regions_to_image(chs_regions, stego_image_mode,
+                                                      borders=True, only_right_bottom=True),
+                "8-adaptive_regions": cls.__regions_to_image(chs_regions_extract, stego_image_mode,
+                                                             borders=True, factor=10),
+                "9-extracted_watermark": cls.__chs_to_image(chs_watermark, stego_image_mode)
             }
             return stages_imgs
         else:
-            return self.__chs_to_image(chs_watermark, stego_image_mode)
+            return cls.__chs_to_image(chs_watermark, stego_image_mode)
 
-    def __extract_from_regions(self, regions, wm_shape, wm_block_size=None):
-        if bool(wm_block_size):
-            return zigzag_extract_from_regions(regions, wm_shape, wm_block_size)
+    @classmethod
+    def __extract_from_regions(cls, regions, key):
+        if key.wmdct_mode:
+            return zigzag_extract_from_regions(regions, key.wm_shape, key.wmdct_block_size)
 
         region_stego = array([])
-        wm_size = wm_shape[0] * wm_shape[1]
+        wm_size = key.wm_shape[0] * key.wm_shape[1]
         for region in regions:
             region = region.flatten()
             region_stego = append(region_stego, region)
@@ -310,8 +315,8 @@ class QtarStego:
                 break
         else:
             region_stego = append(region_stego, zeros(wm_size - region_stego.size))
-        ch_watermark = region_stego[0:wm_size].reshape(wm_shape)
-        return ch_watermark * 255 / self.ch_scale
+        ch_watermark = region_stego[0:wm_size].reshape(key.wm_shape)
+        return ch_watermark * 255 / key.ch_scale
 
     @staticmethod
     def __convert_image_to_chs(image):
@@ -330,7 +335,8 @@ class QtarStego:
 
         return image
 
-    def __draw_borders(self, chs_regions, only_right_bottom=False):
+    @classmethod
+    def __draw_borders(cls, chs_regions, only_right_bottom=False):
         chs_matrix = [ch_regions.matrix for ch_regions in chs_regions]
         max_value = max([ch_matrix.max() for ch_matrix in chs_matrix])
 
@@ -340,52 +346,59 @@ class QtarStego:
             for ch_regions in chs_regions:
                 if is_cf_regions:
                     chs_matrix[ch_id] = draw_cf_map(
-                        CFRegions(ch_regions.rects, chs_matrix[ch_id], ch_regions.curves, self.cf_grid_size),
+                        CFRegions(ch_regions.rects, chs_matrix[ch_id], ch_regions.curves, ch_regions.grid_size),
                         0, only_right_bottom)
                 else:
                     chs_matrix[ch_id] = draw_borders_on(chs_matrix[ch_id], ch_regions.rects, 0, only_right_bottom)
             if is_cf_regions:
                 chs_matrix[ch_id] = draw_cf_map(
-                    CFRegions(chs_regions[ch_id].rects, chs_matrix[ch_id], chs_regions[ch_id].curves, self.cf_grid_size),
+                    CFRegions(chs_regions[ch_id].rects, chs_matrix[ch_id], chs_regions[ch_id].curves, chs_regions[ch_id].grid_size),
                     max_value, only_right_bottom)
             else:
                 chs_matrix[ch_id] = draw_borders_on(chs_matrix[ch_id], chs_regions[ch_id].rects, max_value,
                                                     only_right_bottom)
         return chs_matrix
 
-    def __regions_to_image(self, chs_regions, mode, offset=None, factor=1, borders=False, only_right_bottom=False):
+    @classmethod
+    def __regions_to_image(cls, chs_regions, mode, offset=None, factor=1, borders=False, only_right_bottom=False):
         if borders:
-            chs_matrix = self.__draw_borders(chs_regions, only_right_bottom)
+            chs_matrix = cls.__draw_borders(chs_regions, only_right_bottom)
         else:
             chs_matrix = [ch_regions.matrix for ch_regions in chs_regions]
 
-        return self.__chs_to_image(chs_matrix, mode, offset, factor)
+        return cls.__chs_to_image(chs_matrix, mode, offset, factor)
 
     @property
     def params(self):
         return {
             'homogeneity_threshold': self.homogeneity_threshold,
-            'min_block_size':        self.min_block_size,
-            'max_block_size':        self.max_block_size,
-            'wm_block_size':         self.wm_block_size,
-            'quant_power':           self.quant_power,
-            'cf_grid_size':          self.cf_grid_size,
-            'ch_scale':              self.ch_scale,
-            'offset':                self.offset,
-            'use_permutations':      self.use_permutations
+            'min_block_size': self.min_block_size,
+            'max_block_size': self.max_block_size,
+            'quant_power': self.quant_power,
+            'ch_scale': self.ch_scale,
+            'offset': self.offset,
+            'pm_mode': self.pm_mode,
+            'cf_mode': self.cf_mode,
+            'cf_grid_size': self.cf_grid_size,
+            'wmdct_mode': self.wmdct_mode,
+            'wmdct_block_size': self.wmdct_block_size
         }
 
     @staticmethod
     def from_dict(params):
-        return QtarStego(params['homogeneity_threshold'],
-                         params['min_block_size'],
-                         params['max_block_size'],
-                         params['wm_block_size'],
-                         params['quant_power'],
-                         params['cf_grid_size'],
-                         params['ch_scale'],
-                         params['offset'],
-                         params['use_permutations'])
+        return QtarStego(
+            params['homogeneity_threshold'],
+            params['min_block_size'],
+            params['max_block_size'],
+            params['quant_power'],
+            params['ch_scale'],
+            params['offset'],
+            params['pm_mode'],
+            params['cf_mode'],
+            params['cf_grid_size'],
+            params['wmdct_mode'],
+            params['wmdct_block_size']
+        )
 
 
 class StegoEmbedResult:

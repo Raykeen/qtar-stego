@@ -4,47 +4,64 @@ import numpy as np
 
 from qtar.core.imageqt import parse_qt_key
 
-PARAMS_STRUCT = '=?fbiiiiiiib'
+
+MODE_STRUCT = '=???'
+
+PARAMS_STRUCT = '=fiiiib'
+
 CF_POINTS_COUNT = 3
 
 
 class Key:
     def __init__(self,
-                 ch_scale=None,
-                 cf_grid_size=None,
-                 offset=None,
                  chs_qt_key=None,
                  chs_pm_fix_key=None,
                  chs_ar_key=None,
                  chs_cf_key=None,
                  wm_shape=None,
-                 wm_block_size=None,
+                 ch_scale=None,
+                 offset=None,
+                 pm_mode=False,
                  container_shape=None,
-                 use_permutations=False):
-        self.wm_block_size = wm_block_size
-        self.ch_scale = ch_scale
-        self.cf_grid_size = cf_grid_size
-        self.offset = offset
+                 cf_mode=False,
+                 cf_grid_size=None,
+                 wmdct_mode=False,
+                 wmdct_block_size=None,
+                 ):
         self.chs_qt_key = chs_qt_key or []
         self.chs_pm_fix_key = chs_pm_fix_key or []
         self.chs_cf_key = chs_cf_key or []
         self.chs_ar_key = chs_ar_key or []
         self.wm_shape = wm_shape
+        self.ch_scale = ch_scale
+        self.offset = offset
+        self.pm_mode = pm_mode
         self.container_shape = container_shape
-        self.use_permutations = use_permutations
+        self.cf_mode = cf_mode
+        self.cf_grid_size = cf_grid_size
+        self.wmdct_mode = wmdct_mode
+        self.wmdct_block_size = wmdct_block_size
 
     @property
     def params_bytes(self):
+        bytes = struct.pack(MODE_STRUCT, self.pm_mode, self.cf_mode, self.wmdct_mode)
+
         chs_count = len(self.chs_qt_key)
-        return struct.pack(PARAMS_STRUCT,
-                           self.use_permutations,
-                           self.ch_scale,
-                           self.cf_grid_size if self.cf_grid_size else 0,
-                           *self.offset,
-                           *self.wm_shape,
-                           self.wm_block_size if self.wm_block_size else 0,
-                           *self.container_shape,
-                           chs_count)
+        bytes += struct.pack(PARAMS_STRUCT,
+                             self.ch_scale,
+                             *self.offset,
+                             *self.wm_shape,
+                             chs_count)
+        if self.pm_mode:
+            bytes += int_to_byte(self.container_shape[0]) + int_to_byte(self.container_shape[0])
+
+        if self.cf_mode:
+            bytes += int_to_byte(self.cf_grid_size)
+
+        if self.wmdct_mode:
+            bytes += int_to_byte(self.wmdct_block_size)
+
+        return bytes
 
     @staticmethod
     def cf_key_type(cf_grid_size):
@@ -123,12 +140,12 @@ class Key:
             for ch_n in range(len(self.chs_qt_key)):
                 key_bytes += self.chs_qt_key_bytes[ch_n]
 
-                if self.cf_grid_size:
+                if self.cf_mode:
                     key_bytes += self.chs_cf_key_bytes[ch_n]
                 else:
                     key_bytes += self.chs_ar_key_bytes[ch_n]
 
-                if self.use_permutations:
+                if self.pm_mode:
                     key_bytes += self.chs_pm_fix_key_bytes[ch_n]
 
             file.write(key_bytes)
@@ -137,20 +154,29 @@ class Key:
     @classmethod
     def open(cls, path):
         with open(path, 'rb') as file:
+            mode_bytes = file.read(struct.calcsize(MODE_STRUCT))
+            pm_mode, cf_mode, wmdct_mode = struct.unpack(MODE_STRUCT, mode_bytes)
+
             params_bytes = file.read(struct.calcsize(PARAMS_STRUCT))
 
-            (use_permutations,
-             ch_scale,
-             cf_grid_size,
-             x, y,
-             wm_w, wm_h,
-             wm_block_size,
-             c_w, c_h,
-             chs_count) = struct.unpack(PARAMS_STRUCT, params_bytes)
+            ch_scale, x, y, wm_w, wm_h, chs_count = struct.unpack(PARAMS_STRUCT, params_bytes)
 
-            offset = (x, y)
-            wm_shape = (wm_w, wm_h)
-            container_shape = (c_w, c_h)
+            offset = x, y
+            wm_shape = wm_w, wm_h
+
+            container_shape = None
+            if pm_mode:
+                c_w = read_int(file)
+                c_h = read_int(file)
+                container_shape = c_w, c_h
+
+            cf_grid_size = None
+            if cf_mode:
+                cf_grid_size = read_int(file)
+
+            wmdct_block_size = None
+            if wmdct_mode:
+                wmdct_block_size = read_int(file)
 
             chs_qt_key = []
             chs_ar_key = []
@@ -163,7 +189,7 @@ class Key:
                 qt_key, block_count = parse_qt_key(qt_key.tolist())
                 chs_qt_key.append(qt_key)
 
-                if cf_grid_size:
+                if cf_mode:
                     cf_key_flat = np.fromfile(file, cls.cf_key_type(cf_grid_size), block_count * CF_POINTS_COUNT)
                     cf_key = [tuple(curve.astype(np.int)) for curve in np.split(cf_key_flat, block_count)]
                     chs_cf_key.append(cf_key)
@@ -171,7 +197,7 @@ class Key:
                     ar_key = np.fromfile(file, np.uint8, block_count).tolist()
                     chs_ar_key.append(ar_key)
 
-                if use_permutations:
+                if pm_mode:
                     pm_fix_key_len = read_int(file)
                     pm_fix_key = []
                     for i in range(pm_fix_key_len):
@@ -180,9 +206,19 @@ class Key:
 
                     chs_pm_fix_key.append(pm_fix_key)
 
-        return cls(ch_scale, cf_grid_size, offset,
-                   chs_qt_key, chs_pm_fix_key, chs_ar_key, chs_cf_key,
-                   wm_shape, wm_block_size, container_shape, use_permutations)
+        return cls(chs_qt_key,
+                   chs_pm_fix_key,
+                   chs_ar_key,
+                   chs_cf_key,
+                   wm_shape,
+                   ch_scale,
+                   offset,
+                   pm_mode,
+                   container_shape,
+                   cf_mode,
+                   cf_grid_size,
+                   wmdct_mode,
+                   wmdct_block_size)
 
 
 class Container:

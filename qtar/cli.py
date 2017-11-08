@@ -3,7 +3,7 @@ import os
 from PIL import Image
 
 from qtar.core.qtar import QtarStego, NoSpaceError
-from qtar.core.argparser import create_argpaser
+from qtar.core.argparser import create_argpaser, validate_params
 from qtar.core.container import Key
 from qtar.optimization.metrics import psnr, bcr, ssim
 from qtar.utils import benchmark
@@ -13,10 +13,12 @@ STAGES_DIR = "stages\\"
 EMBEDDING_INFO_TEMPLATE = """Embedding {watermark} in {container} using QTAR
 
 QTAR params:
-pm mode:               {use_permutations}
+pm mode:               {pm_mode}
+cf mode:               {cf_mode}
+wmdct mode:            {wmdct_mode}
 threshold:             {homogeneity_threshold}
 min - max block sizes: {min_block_size} - {max_block_size}
-watermark block size:  {wm_block_size}
+watermark block size:  {wmdct_block_size}
 quantization power:    {quant_power:.2f}
 cf grid size:          {cf_grid_size}
 scale:                 {ch_scale:.2f}
@@ -34,7 +36,7 @@ WM_SIZE: {width}x{height}"""
 STAMP_TEMPLATE = """pm mode:    {use_permutations}
 threshold:  {homogeneity_threshold}
 block size: {min_block_size}px - {max_block_size}px
-wm block:   {wm_block_size}px
+wm block:   {wmdct_block_size}px
 q power:    {quant_power:.2f}
 cf grid:    {cf_grid_size}px
 k:          {ch_scale:.2f}
@@ -68,7 +70,8 @@ def main():
                            type=str, default=None,
                            help='save key to file')
     args = argparser.parse_args()
-    params = vars(args)
+    params = validate_params(vars(args))
+
     embed(params)
 
 

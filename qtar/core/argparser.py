@@ -1,4 +1,6 @@
 import argparse
+from copy import copy
+
 from qtar.core.qtar import DEFAULT_PARAMS
 
 
@@ -20,22 +22,45 @@ def create_argpaser(with_images=True):
     argparser.add_argument('-max', '--max_block_size', metavar='size',
                            type=int, default=DEFAULT_PARAMS['max_block_size'],
                            help='max block size   int[min_block_size, image_size], square of 2')
-    argparser.add_argument('-wms', '--wm_block_size', metavar='size',
-                           type=int, default=DEFAULT_PARAMS['wm_block_size'],
-                           help='watermark block size   int[1, wm_size], square of 2')
     argparser.add_argument('-q', '--quant_power', metavar='power',
                            type=float, default=DEFAULT_PARAMS['quant_power'],
                            help='quantization power   float(0, 1]')
-    argparser.add_argument('-cf', '--cf_grid_size', metavar='size',
-                           type=int, default=DEFAULT_PARAMS['cf_grid_size'],
-                           help='grid size to align curve fitting   int[1, min_block_size], square of 2')
-    argparser.add_argument('-pm', '--use_permutations', action='store_true',
-                           help='use permutation mode')
     argparser.add_argument('-s', '--ch_scale', metavar='scale',
                            type=float, default=DEFAULT_PARAMS['ch_scale'],
                            help='scale to ch_scale watermark pixels values before embedding   float(0, 255]')
     argparser.add_argument('-o', '--offset', metavar='offset',
                            type=int, nargs=2, default=DEFAULT_PARAMS['offset'],
                            help='offset container image')
+    argparser.add_argument('-pm', '--pm_mode', action='store_true',
+                           help='use permutation mode')
+    argparser.add_argument('-cf', '--cf_mode', action='store_true',
+                           help='use curve-fitting mode')
+    argparser.add_argument('-wmdct', '--wmdct_mode', action='store_true',
+                           help='use watermark DCT mode')
+    argparser.add_argument('-cf_g', '--cf_grid_size', metavar='size',
+                           type=int, default=None,
+                           help='grid size to align curve fitting   int[1, min_block_size], square of 2')
+    argparser.add_argument('-wmdct_b', '--wmdct_block_size', metavar='size',
+                           type=int, default=None,
+                           help='watermark block size   int[1, wm_size], square of 2')
 
     return argparser
+
+
+def validate_params(params):
+    if params['cf_grid_size']:
+        params['cf_mode'] = True
+    elif params['cf_mode']:
+        params['cf_grid_size'] = DEFAULT_PARAMS['cf_grid_size']
+
+    if params['wmdct_block_size']:
+        params['wmdct_mode'] = True
+    elif params['wmdct_mode']:
+        params['wmdct_block_size'] = DEFAULT_PARAMS['wmdct_block_size']
+
+    valid_params = copy(DEFAULT_PARAMS)
+    valid_params.update(params)
+    return valid_params
+
+
+
