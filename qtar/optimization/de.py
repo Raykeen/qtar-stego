@@ -1,3 +1,4 @@
+import sys
 from copy import copy
 
 from PIL import Image
@@ -6,7 +7,7 @@ from scipy.optimize import differential_evolution
 from qtar.core.argparser import create_argpaser
 from qtar.optimization.deissues import ISSUES
 from qtar.cli import embed
-from qtar.utils import benchmark
+from qtar.utils import benchmark, print_progress_bar
 from qtar.utils.xlsx import save_de_results
 
 DE_RESULT_XLS = "xls\\de.xlsx"
@@ -64,12 +65,13 @@ def run_de(params, Issue):
     print(de_info)
 
     with benchmark("optimized in"):
-        de_result = differential_evolution(Issue.func, Issue.bounds, (container, watermark, params, def_metrics),
+        de_result = differential_evolution(Issue.func, Issue.bounds,
+                                           (container, watermark, params, def_metrics, callback),
                                            strategy='rand1bin',
                                            popsize=Issue.np,
                                            mutation=Issue.f,
                                            recombination=Issue.cr,
-                                           tol=0,
+                                           polish=False,
                                            maxiter=Issue.iter)
     print(de_result.nit)
     new_params = Issue.get_new_params(de_result)
@@ -91,6 +93,10 @@ def run_de(params, Issue):
         save_de_results(DE_RESULT_XLS, def_params, new_params, def_metrics, new_metrics)
 
     return new_metrics
+
+
+def callback(evaluations, total, time):
+    print_progress_bar(evaluations, total, time=time, length=30, file=sys.stderr)
 
 
 if __name__ == "__main__":

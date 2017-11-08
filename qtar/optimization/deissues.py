@@ -1,3 +1,4 @@
+from timeit import default_timer as timer
 from math import sqrt
 from copy import copy
 
@@ -7,7 +8,40 @@ from qtar.core.qtar import QtarStego, DEFAULT_PARAMS
 from qtar.optimization.metrics import bcr, psnr
 
 
-class OptIssue1:
+class OptIssueBase:
+    desc = 'Base Issue\n' \
+           'func: None\n' \
+           'params: None'
+    bounds = []
+
+    np = 1
+    cr = 0.5
+    f = 0.5
+    iter = 1
+
+    evaluations = 0
+    time = None
+
+    @classmethod
+    def evaluations_total(cls):
+        return (cls.iter + 1) * cls.np
+
+    @classmethod
+    def func(cls, *args):
+        return 0
+
+    @classmethod
+    def eval_callback(cls, callback):
+        if cls.time is None:
+            cls.time = timer()
+
+        cls.evaluations += 1
+
+        new_time = timer()
+        callback(cls.evaluations, cls.evaluations_total(), (new_time - cls.time) / cls.evaluations)
+
+
+class OptIssue1(OptIssueBase):
     desc = 'Issue 1\n' \
            'func: -((psnr - def_psnr) / def_psnr + (bpp - def_bpp) / def_bpp)\n' \
            'params: threshold'
@@ -18,8 +52,8 @@ class OptIssue1:
     f = 0.9096
     iter = 31
 
-    @staticmethod
-    def func(th, container, watermark, params, default_metrics):
+    @classmethod
+    def func(cls, th, container, watermark, params, default_metrics, callback):
         def_psnr = default_metrics['container psnr']
         def_bpp = default_metrics['container bpp']
         params = copy(params)
@@ -27,6 +61,8 @@ class OptIssue1:
         qtar = QtarStego.from_dict(params)
 
         embed_result = qtar.embed(container, watermark)
+
+        cls.eval_callback(callback)
 
         container_image = embed_result.img_container
         stego_image = embed_result.img_stego
@@ -45,7 +81,7 @@ class OptIssue1:
         return {"homogeneity_threshold": result.x[0]}
 
 
-class OptIssue2:
+class OptIssue2(OptIssueBase):
     desc = 'Issue 2\nfunc: BCR\nparams: threshold for 3 brightness levels'
     bounds = ((0, 1), (0, 1), (0, 1))
 
@@ -54,12 +90,15 @@ class OptIssue2:
     f = 0.6301
     iter = 60
 
-    @staticmethod
-    def func(threshold, container, watermark, params, default_metrics):
+    @classmethod
+    def func(cls, threshold, container, watermark, params, default_metrics, callback):
         params = copy(params)
         params['homogeneity_threshold'] = threshold
         qtar = QtarStego.from_dict(params)
         embed_result = qtar.embed(container, watermark)
+
+        cls.eval_callback(callback)
+
         watermark = embed_result.img_watermark
         extracted_wm = qtar.extract(embed_result.img_stego, embed_result.key)
         return -bcr(watermark, extracted_wm)
@@ -69,7 +108,7 @@ class OptIssue2:
         return {"homogeneity_threshold": result.x}
 
 
-class OptIssue3:
+class OptIssue3(OptIssueBase):
     desc = 'Issue 3\nfunc: PSNR\nparams: offset'
     bounds = ((0, 511), (0, 511))
 
@@ -78,12 +117,15 @@ class OptIssue3:
     f = 1.1922
     iter = 40
 
-    @staticmethod
-    def func(offset, container, watermark, params, default_metrics):
+    @classmethod
+    def func(cls, offset, container, watermark, params, default_metrics, callback):
         params = copy(params)
         params['offset'] = array(offset).astype(int)
         qtar = QtarStego.from_dict(params)
         embed_result = qtar.embed(container, watermark)
+
+        cls.eval_callback(callback)
+
         container_image = embed_result.img_container
         stego_image = embed_result.img_stego
         return -psnr(container_image, stego_image)
@@ -93,7 +135,7 @@ class OptIssue3:
         return {'offset': array(result.x).astype(int)}
 
 
-class OptIssue4:
+class OptIssue4(OptIssueBase):
     desc = 'Issue 4\nfunc: BCR\nParams: offset'
     bounds = ((0, 511), (0, 511))
 
@@ -102,12 +144,15 @@ class OptIssue4:
     f = 1.1922
     iter = 40
 
-    @staticmethod
-    def func(offset, container, watermark, params, default_metrics):
+    @classmethod
+    def func(cls, offset, container, watermark, params, default_metrics, callback):
         params = copy(params)
         params['offset'] = array(offset).astype(int)
         qtar = QtarStego.from_dict(params)
         embed_result = qtar.embed(container, watermark)
+
+        cls.eval_callback(callback)
+
         watermark = embed_result.img_watermark
         extracted_wm = qtar.extract(embed_result.img_stego, embed_result.key)
         return -bcr(watermark, extracted_wm)
@@ -117,7 +162,7 @@ class OptIssue4:
         return {'offset': array(result.x).astype(int)}
 
 
-class OptIssue5:
+class OptIssue5(OptIssueBase):
     desc = 'Issue 5\nfunc: PSNR\nparams: max bock size, quantization power, channel scale'
     bounds = ((3, 10), (0.01, 1), (1, 255))
 
@@ -126,8 +171,8 @@ class OptIssue5:
     f = 0.6301
     iter = 60
 
-    @staticmethod
-    def func(args, container, watermark, params, default_metrics):
+    @classmethod
+    def func(cls, args, container, watermark, params, default_metrics, callback):
         max_b = 2 ** int(args[0])
         qp = args[1]
         sc = args[2]
@@ -138,6 +183,9 @@ class OptIssue5:
         qtar = QtarStego.from_dict(params)
 
         embed_result = qtar.embed(container, watermark)
+
+        cls.eval_callback(callback)
+
         container_image = embed_result.img_container
         stego_image = embed_result.img_stego
         return -psnr(container_image, stego_image)
@@ -151,7 +199,7 @@ class OptIssue5:
         }
 
 
-class OptIssue6:
+class OptIssue6(OptIssueBase):
     desc = 'Issue 6\nFunc: BCR\nParams: max bock size, quantization power, channel scale'
     bounds = ((3, 10), (0.01, 1), (1, 255))
 
@@ -160,8 +208,8 @@ class OptIssue6:
     f = 0.6301
     iter = 60
 
-    @staticmethod
-    def func(args, container, watermark, params, default_metrics):
+    @classmethod
+    def func(cls, args, container, watermark, params, default_metrics, callback):
         max_b = 2 ** int(args[0])
         qp = args[1]
         sc = args[2]
@@ -171,6 +219,9 @@ class OptIssue6:
         params['ch_scale'] = sc
         qtar = QtarStego.from_dict(params)
         embed_result = qtar.embed(container, watermark)
+
+        cls.eval_callback(callback)
+
         watermark = embed_result.img_watermark
         extracted_wm = qtar.extract(embed_result.img_stego, embed_result.key)
         return -bcr(watermark, extracted_wm)
@@ -184,7 +235,7 @@ class OptIssue6:
         }
 
 
-class OptIssue7:
+class OptIssue7(OptIssueBase):
     desc = 'Issue 7\n' \
            'func: sqrt((-1 / psnr)^2 + (1 - bcr)^2 + (1 - bpp / maxbpp)^2)\n' \
            'params: threshold for 3 brightness levels, min bock size, max bock size, quantization power, channel scale'
@@ -195,8 +246,8 @@ class OptIssue7:
     f = 0.6702
     iter = 166
 
-    @staticmethod
-    def func(args, container, watermark, params, default_metrics):
+    @classmethod
+    def func(cls, args, container, watermark, params, default_metrics, callback):
         th = (args[0], args[1], args[2])
         max_b = 2 ** int(args[3])
         min_b = 2 ** int(args[4])
@@ -219,6 +270,9 @@ class OptIssue7:
             stego_image = embed_result.img_stego
             watermark = embed_result.img_watermark
             extracted_wm = qtar.extract(stego_image, embed_result.key)
+
+            cls.eval_callback(callback)
+
             psnr_ = psnr(container_image, stego_image)
             bcr_ = bcr(watermark, extracted_wm)
             bpp_ = embed_result.bpp
@@ -243,7 +297,7 @@ class OptIssue7:
         }
 
 
-class OptIssue8:
+class OptIssue8(OptIssueBase):
     desc = 'Issue 8\n' \
            'func: sqrt(psnr_w * (-1 / psnr)^2 + bcr_w * (1 - bcr)^2 + bpp_w * (1 - bpp / maxbpp)^2)\n' \
            'params: threshold for 3 brightness levels, quantization power, channel scale'
@@ -254,8 +308,8 @@ class OptIssue8:
     f = 0.6702
     iter = 166
 
-    @staticmethod
-    def func(args, container, watermark, params, default_metrics):
+    @classmethod
+    def func(cls, args, container, watermark, params, default_metrics, callback):
         th = (args[0], args[1], args[2])
         x = int(args[3])
         y = int(args[4])
@@ -279,6 +333,9 @@ class OptIssue8:
             stego_image = embed_result.img_stego
             watermark = embed_result.img_watermark
             extracted_wm = qtar.extract(stego_image, embed_result.key)
+
+            cls.eval_callback(callback)
+
             psnr_ = psnr(container_image, stego_image)
             bcr_ = bcr(watermark, extracted_wm)
             bpp_ = embed_result.bpp
@@ -297,7 +354,7 @@ class OptIssue8:
         }
 
 
-class OptIssue9:
+class OptIssue9(OptIssueBase):
     desc = 'Issue 9\n' \
            'func: -((psnr - def_psnr) / def_psnr + (bpp - def_bpp) / def_bpp)\n' \
            'params: threshold for 3 brightness levels, offset'
@@ -308,8 +365,8 @@ class OptIssue9:
     f = 0.6702
     iter = 166
 
-    @staticmethod
-    def func(args, container, watermark, params, default_metrics):
+    @classmethod
+    def func(cls, args, container, watermark, params, default_metrics, callback):
         def_psnr = default_metrics['container psnr']
         def_bpp = default_metrics['container bpp']
         th = (args[0], args[1], args[2])
@@ -321,6 +378,9 @@ class OptIssue9:
         qtar = QtarStego.from_dict(params)
 
         embed_result = qtar.embed(container, watermark)
+
+        cls.eval_callback(callback)
+
         container_image = embed_result.img_container
         stego_image = embed_result.img_stego
         psnr_ = psnr(container_image, stego_image)
@@ -341,7 +401,7 @@ class OptIssue9:
         }
 
 
-class OptIssue10:
+class OptIssue10(OptIssueBase):
     desc = 'Issue 10\n' \
            'func: -((psnr - def_psnr) / def_psnr + (bpp - def_bpp) / def_bpp)\n' \
            'params: threshold for 3 brightness levels'
@@ -352,8 +412,8 @@ class OptIssue10:
     f = 0.6702
     iter = 166
 
-    @staticmethod
-    def func(args, container, watermark, params, default_metrics):
+    @classmethod
+    def func(cls, args, container, watermark, params, default_metrics, callback):
         def_psnr = default_metrics['container psnr']
         def_bpp = default_metrics['container bpp']
         th = (args[0], args[1], args[2])
@@ -362,6 +422,9 @@ class OptIssue10:
         qtar = QtarStego.from_dict(params)
 
         embed_result = qtar.embed(container, watermark)
+
+        cls.eval_callback(callback)
+
         container_image = embed_result.img_container
         stego_image = embed_result.img_stego
         psnr_ = psnr(container_image, stego_image)
@@ -380,4 +443,6 @@ class OptIssue10:
             'homogeneity_threshold': (result.x[0], result.x[1], result.x[2])
         }
 
-ISSUES = [OptIssue1, OptIssue2, OptIssue3, OptIssue4, OptIssue5, OptIssue6, OptIssue7, OptIssue8, OptIssue9, OptIssue10]
+
+ISSUES = [OptIssue1, OptIssue2, OptIssue3, OptIssue4, OptIssue5, OptIssue6, OptIssue7, OptIssue8, OptIssue9,
+          OptIssue10]
