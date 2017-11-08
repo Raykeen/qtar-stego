@@ -16,7 +16,11 @@ def ssim(img1, img2):
     else:
         multichannel = False
 
-    return compare_ssim(np_img1, np_img2, multichannel=multichannel)
+    return compare_ssim(np_img1, np_img2,
+                        multichannel=multichannel,
+                        gaussian_weights=True,
+                        sigma=1.5,
+                        use_sample_covariance=True)
 
 
 def bcr(array1, array2):
