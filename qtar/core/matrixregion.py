@@ -62,6 +62,7 @@ def divide_into_equal_regions(matrix, region_size):
 
     return MatrixRegions(rects, matrix)
 
+
 def rect_size(rect):
     x0, y0, x1, y1 = rect
     return (x1 - x0) * (y1 - y0)

@@ -26,24 +26,41 @@ class CFRegions(MatrixRegions):
         curve = self.curves[i]
 
         x0, y0, x1, y1 = rect
-        grid_width = int((x1 - x0) / self.grid_size)
-        grid_height = int((y1 - y0) / self.grid_size)
 
-        grid_cells_count = 0
+        height, width = y1 - y0, x1 - x0
 
-        for x in range(grid_width):
-            y = math.ceil(curve_func(curve, x))
-            grid_cells_count += grid_height - y
+        normal_curve = [coord * self.grid_size for coord in curve]
 
-        return grid_cells_count * self.grid_size ** 2
+        size = 0
+        for x in range(width):
+            y = math.ceil(curve_func(normal_curve, x))
+            size += height - y
 
-    def get_cfregion(self, rect, curve):
+        return size
+
+    def get_cfregion_columns(self, rect, curve):
         rect_region = super().get_region(rect)
         normal_curve = [coord * self.grid_size for coord in curve]
-        return np.concatenate([
+        return [
             column[math.ceil(curve_func(normal_curve, x)):]
             for x, column in enumerate(rect_region.T)  # column wise
-        ])
+        ]
+
+    def get_cfregion(self, *args):
+        return np.concatenate(self.get_cfregion_columns(*args))
+
+    def columned_regions(self):
+        for rect, curve in zip(self.rects, self.curves):
+            yield self.get_cfregion_columns(rect, curve)
+
+    def set_cfregion_columns(self, rect, curve, value):
+        region = self.get_region(rect)
+        height, width = region.shape
+        normal_curve = [coord * self.grid_size for coord in curve]
+
+        for x in range(width):
+            y = math.ceil(curve_func(normal_curve, x))
+            region[y:, x] = value[x]
 
     def set_cfregion(self, rect, curve, value):
         region = self.get_region(rect)

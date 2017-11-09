@@ -14,7 +14,7 @@ from qtar.core.adaptiveregions import adapt_regions
 from qtar.core.permutation import reverse_permutation, fix_diff, get_diff_fix
 from qtar.core.container import Container, Key
 from qtar.core.matrixregion import MatrixRegions, divide_into_equal_regions, draw_borders_on
-from qtar.core.zigzag import zigzag_embed_to_regions, zigzag_extract_from_regions
+from qtar.core.zigzag import zigzag_embed_to_regions, zigzag_extract_from_regions, zigzag_embed_to_cfregions, zigzag_extract_from_cfregions
 
 DEFAULT_PARAMS = {
     'homogeneity_threshold': 0.4,
@@ -56,7 +56,7 @@ class QtarStego:
         self.wmdct_mode = wmdct_mode
         self.wmdct_block_size = wmdct_block_size
 
-    def embed(self, img_container, img_watermark=None, resize_to_fit=True, stages=False):
+    def embed(self, img_container, img_watermark, resize_to_fit=True, stages=False):
         size = int(pow(2, int(log2(min(img_container.width, img_container.height)))))
 
         max_b = min(self.max_block_size, *img_container.size)
@@ -213,11 +213,14 @@ class QtarStego:
     def __embed_in_regions(self, regions, ch_watermark):
         if self.cf_mode:
             regions = CFRegions(regions.rects, copy(regions.matrix), regions.curves, self.cf_grid_size)
+            if self.wmdct_mode:
+                return zigzag_embed_to_cfregions(ch_watermark, regions)
+
         else:
             regions = MatrixRegions(regions.rects, copy(regions.matrix))
+            if self.wmdct_mode:
+                return zigzag_embed_to_regions(ch_watermark, regions)
 
-        if self.wmdct_mode:
-            return zigzag_embed_to_regions(ch_watermark, regions)
 
         wm_iter = ch_watermark.flat
 
@@ -304,7 +307,10 @@ class QtarStego:
     @classmethod
     def __extract_from_regions(cls, regions, key):
         if key.wmdct_mode:
-            return zigzag_extract_from_regions(regions, key.wm_shape, key.wmdct_block_size)
+            if key.cf_mode:
+                return zigzag_extract_from_cfregions(regions, key.wm_shape, key.wmdct_block_size)
+            else:
+                return zigzag_extract_from_regions(regions, key.wm_shape, key.wmdct_block_size)
 
         region_stego = array([])
         wm_size = key.wm_shape[0] * key.wm_shape[1]
