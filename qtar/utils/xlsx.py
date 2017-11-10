@@ -13,15 +13,21 @@ def save_de_results(file, def_params, new_params, def_metrics, new_metrics):
         workbook.guess_types = True
 
     issue = def_params["issue"]
+
+    sheet_name = "issue " + str(issue) + " " +\
+                 ('pm' if def_params['pm_mode'] else '') +\
+                 ('cf' if def_params['cf_mode'] else '') +\
+                 ('wmdct' if def_params['wmdct_mode'] else '')
+
     def_params = prepare_params(def_params)
     new_params = prepare_params(new_params)
     def_metrics = prepare_params(def_metrics)
     new_metrics = prepare_params(new_metrics)
 
     try:
-        sheet = workbook.get_sheet_by_name("issue " + str(issue))
+        sheet = workbook.get_sheet_by_name(sheet_name)
     except:
-        sheet = workbook.create_sheet("issue " + str(issue))
+        sheet = workbook.create_sheet(sheet_name)
         headers = (*def_params["headers"], *def_metrics["headers"], *new_params["headers"], *new_metrics["headers"])
         past_list_in_row(sheet, first_col, first_row, headers)
 
@@ -68,7 +74,7 @@ def prepare_params(params):
             headers.append("th")
             values.append(th)
     if "min_block_size" in params and "max_block_size" in params:
-        headers.extend(("min, px", "max, px"))
+        headers.extend(("min_b, px", "max_b, px"))
         values.extend((params["min_block_size"], params["max_block_size"]))
     if "quant_power" in params:
         headers.append("qp")
@@ -79,6 +85,13 @@ def prepare_params(params):
     if "offset" in params:
         headers.extend(("x, px", "y, px"))
         values.extend((params["offset"][0], params["offset"][1]))
+    if not ('cf_mode' in params and params['cf_mode'] is False) and 'cf_grid_size' in params:
+        headers.append('cf')
+        values.append(params['cf_grid_size'])
+    if not ('wmdct_mode' in params and params['wmdct_mode'] is False) and 'wmdct_block_size' in params:
+        headers.append('wm_b')
+        values.append(params['wmdct_block_size'])
+
     if "container psnr" in params:
         headers.append("container PSNR, db")
         values.append(params["container psnr"])

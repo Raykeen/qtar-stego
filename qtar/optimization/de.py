@@ -4,7 +4,7 @@ from copy import copy
 from PIL import Image
 from scipy.optimize import differential_evolution
 
-from qtar.core.argparser import create_argpaser
+from qtar.core.argparser import create_argpaser, validate_params
 from qtar.optimization.deissues import ISSUES
 from qtar.cli import embed
 from qtar.utils import benchmark, print_progress_bar
@@ -40,7 +40,8 @@ def main():
                            type=int, nargs=2, default=None,
                            help='resize watermark')
     args = argparser.parse_args()
-    params = vars(args)
+
+    params = validate_params(vars(args))
 
     if args.issue == 0:
         for Issue in ISSUES:
@@ -76,7 +77,7 @@ def run_de(params, Issue):
                                            polish=False,
                                            maxiter=Issue.iter)
     print("Iterations done: %s; DE message: %s" % (de_result.nit, de_result.message))
-    new_params = Issue.get_new_params(de_result)
+    new_params = Issue.get_new_params(de_result,  params)
 
     print("\nResult:")
     for name, value in new_params.items():
@@ -92,13 +93,23 @@ def run_de(params, Issue):
     new_metrics = embed(params)
 
     if params['xls_path']:
-        save_de_results(DE_RESULT_XLS, def_params, new_params, def_metrics, new_metrics)
+        while True:
+            try:
+                save_de_results(DE_RESULT_XLS, def_params, new_params, def_metrics, new_metrics)
+                break
+            except PermissionError:
+                print('Cant save results. Please close %s' % DE_RESULT_XLS, file=sys.stderr)
+                input()
+                continue
 
     return new_metrics
 
 
-def callback(evaluations, total, time):
+def callback(evaluations, total, time, error=None, new_params=None):
     print_progress_bar(evaluations, total, time=time, length=30, file=sys.stderr)
+
+    if error:
+        print('\n\n' + str(error) + '\n\n' + str(new_params) + '\n', file=sys.stderr)
 
 
 if __name__ == "__main__":

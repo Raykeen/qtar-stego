@@ -1,3 +1,4 @@
+import sys
 from timeit import default_timer as timer
 from math import sqrt, ceil
 from copy import copy
@@ -27,19 +28,23 @@ class OptIssueBase:
     def iter(cls):
         return ceil(cls.evaluations / (cls.np * len(cls.bounds)) - 1)
 
+    @classproperty
+    def max_evaluations(cls):
+        return (cls.iter + 1) * cls.np * len(cls.bounds)
+
     @classmethod
     def func(cls, *args):
         return 0
 
     @classmethod
-    def eval_callback(cls, callback):
+    def eval_callback(cls, callback, **kwargs):
         if cls.time is None:
             cls.time = timer()
 
         cls.evaluations_done += 1
 
         new_time = timer()
-        callback(cls.evaluations_done, cls.evaluations, (new_time - cls.time) / cls.evaluations_done)
+        callback(cls.evaluations_done, cls.max_evaluations, (new_time - cls.time) / cls.evaluations_done, **kwargs)
 
 
 class OptIssue1(OptIssueBase):
@@ -78,7 +83,12 @@ class OptIssue1(OptIssueBase):
         return func
 
     @staticmethod
-    def get_new_params(result):
+    def get_new_params(result, def_params):
+        if result.fun == 0:
+            return {
+                'homogeneity_threshold': def_params['homogeneity_threshold']
+            }
+
         return {"homogeneity_threshold": result.x[0]}
 
 
@@ -105,7 +115,12 @@ class OptIssue2(OptIssueBase):
         return -bcr(watermark, extracted_wm)
 
     @staticmethod
-    def get_new_params(result):
+    def get_new_params(result, def_params):
+        if result.fun == 0:
+            return {
+                'homogeneity_threshold': def_params['homogeneity_threshold']
+            }
+
         return {"homogeneity_threshold": result.x}
 
 
@@ -132,7 +147,12 @@ class OptIssue3(OptIssueBase):
         return -psnr(container_image, stego_image)
 
     @staticmethod
-    def get_new_params(result):
+    def get_new_params(result, def_params):
+        if result.fun == 0:
+            return {
+                'offset': def_params['offset']
+            }
+
         return {'offset': array(result.x).astype(int)}
 
 
@@ -159,7 +179,12 @@ class OptIssue4(OptIssueBase):
         return -bcr(watermark, extracted_wm)
 
     @staticmethod
-    def get_new_params(result):
+    def get_new_params(result, def_params):
+        if result.fun == 0:
+            return {
+                'offset': def_params['offset']
+            }
+
         return {'offset': array(result.x).astype(int)}
 
 
@@ -192,7 +217,14 @@ class OptIssue5(OptIssueBase):
         return -psnr(container_image, stego_image)
 
     @staticmethod
-    def get_new_params(result):
+    def get_new_params(result, def_params):
+        if result.fun == 0:
+            return {
+                'max_block_size': def_params['max_block_size'],
+                'quant_power': def_params['quant_power'],
+                'ch_scale': def_params['ch_scale']
+            }
+
         return {
             'max_block_size': 2 ** int(result.x[0]),
             'quant_power': result.x[1],
@@ -228,7 +260,13 @@ class OptIssue6(OptIssueBase):
         return -bcr(watermark, extracted_wm)
 
     @staticmethod
-    def get_new_params(result):
+    def get_new_params(result, def_params):
+        if result.fun == 0:
+            return {
+                'max_block_size': def_params['max_block_size'],
+                'quant_power': def_params['quant_power'],
+                'ch_scale': def_params['ch_scale']
+            }
         return {
             'max_block_size': 2 ** int(result.x[0]),
             'quant_power': result.x[1],
@@ -283,7 +321,16 @@ class OptIssue7(OptIssueBase):
         return sqrt((-1 / psnr_) ** 2 + (1 - bcr_) ** 2 + (1 - bpp_ / maxbpp) ** 2)
 
     @staticmethod
-    def get_new_params(result):
+    def get_new_params(result, def_params):
+        if result.fun == 0:
+            return {
+                'homogeneity_threshold': def_params['homogeneity_threshold'],
+                'min_block_size': def_params['min_block_size'],
+                'max_block_size': def_params['max_block_size'],
+                'quant_power': def_params['quant_power'],
+                'ch_scale': def_params['ch_scale']
+            }
+
         max_b = 2 ** int(result.x[3])
         min_b = 2 ** int(result.x[4])
         if min_b > max_b:
@@ -346,7 +393,14 @@ class OptIssue8(OptIssueBase):
         return sqrt(psnr_w * (-1 / psnr_) ** 2 + bcr_w * (1 - bcr_) ** 2 + bpp_w * (1 - bpp_ / maxbpp) ** 2)
 
     @staticmethod
-    def get_new_params(result):
+    def get_new_params(result, def_params):
+        if result.fun == 0:
+            return {
+                'homogeneity_threshold': def_params['homogeneity_threshold'],
+                'offset': def_params['offset'],
+                'quant_power': def_params['quant_power'],
+                'ch_scale': def_params['ch_scale']
+            }
         return {
             'homogeneity_threshold': (result.x[0], result.x[1], result.x[2]),
             'offset': (int(result.x[3]), int(result.x[4])),
@@ -395,7 +449,12 @@ class OptIssue9(OptIssueBase):
         return func
 
     @staticmethod
-    def get_new_params(result):
+    def get_new_params(result, def_params):
+        if result.fun == 0:
+            return {
+                'homogeneity_threshold': def_params['homogeneity_threshold'],
+                'offset': def_params['offset']
+            }
         return {
             'homogeneity_threshold': (result.x[0], result.x[1], result.x[2]),
             'offset': (int(result.x[3]), int(result.x[4]))
@@ -439,11 +498,79 @@ class OptIssue10(OptIssueBase):
         return func
 
     @staticmethod
-    def get_new_params(result):
+    def get_new_params(result, def_params):
+        if result.fun == 0:
+            return {
+                'homogeneity_threshold': def_params['homogeneity_threshold']
+            }
         return {
             'homogeneity_threshold': (result.x[0], result.x[1], result.x[2])
         }
 
 
+class OptIssue11(OptIssueBase):
+    desc = 'Issue 11\n' \
+           'func: -((psnr_c - def_psnr_c) / def_psnr_c + (bpp - def_bpp) / def_bpp + (psnr_w - def_psnr_w) / def_psnr_w)\n' \
+           'params: th1, th2, th3, cf, wm_b'
+    bounds = ((0, 1), (0, 1), (0, 1), (0, 4), (0, 10))
+
+    np = 20
+    cr = 0.6938
+    f = 0.9314
+    evaluations = 10000
+
+    @classmethod
+    def func(cls, args, container, watermark, params, default_metrics, callback):
+        def_psnr_c = default_metrics['container psnr']
+        def_psnr_w = default_metrics['watermark psnr']
+        def_bpp = default_metrics['container bpp']
+
+        new_params = {
+            'homogeneity_threshold': (args[0], args[1], args[2]),
+            'cf_grid_size': 2 ** int(args[3]),
+            'wmdct_block_size': 2 ** int(args[4])
+        }
+
+        params = copy(params)
+        params.update(new_params)
+
+        qtar = QtarStego.from_dict(params)
+
+        try:
+            embed_result = qtar.embed(container, watermark)
+            wm_extracted = qtar.extract(embed_result.img_stego, embed_result.key)
+        except Exception as e:
+            cls.eval_callback(callback, error=e, new_params=new_params)
+            return 0
+
+        cls.eval_callback(callback)
+
+        psnr_c = psnr(embed_result.img_container, embed_result.img_stego)
+        psnr_w = psnr(embed_result.img_watermark, wm_extracted)
+        bpp_ = embed_result.bpp
+
+        func = -((psnr_c - def_psnr_c) / def_psnr_c + (bpp_ - def_bpp) / def_bpp + (psnr_w - def_psnr_w) / def_psnr_w)
+
+        if psnr_c < def_psnr_c or bpp_ < def_bpp or psnr_w < def_psnr_w:
+            return 0
+
+        return func
+
+    @staticmethod
+    def get_new_params(result, def_params):
+        if result.fun == 0:
+            return {
+                'homogeneity_threshold': def_params['homogeneity_threshold'],
+                'cf_grid_size': def_params['cf_grid_size'],
+                'wmdct_block_size': def_params['wmdct_block_size']
+            }
+
+        return {
+            'homogeneity_threshold': (result.x[0], result.x[1], result.x[2]),
+            'cf_grid_size': 2 ** int(result.x[3]),
+            'wmdct_block_size': 2 ** int(result.x[4])
+        }
+
+
 ISSUES = [OptIssue1, OptIssue2, OptIssue3, OptIssue4, OptIssue5, OptIssue6, OptIssue7, OptIssue8, OptIssue9,
-          OptIssue10]
+          OptIssue10, OptIssue11]
