@@ -4,7 +4,7 @@ from qtar.core.qtar import QtarStego
 from qtar.optimization.metrics import psnr, bcr, ssim
 
 
-def embed(params):
+def embed(params, filter_=None):
     container = Image.open(params['container'])
     if 'container_size' in params and params['container_size']:
         container = container.resize(params['container_size'], Image.BILINEAR)
@@ -25,6 +25,9 @@ def embed(params):
     psnr_container = psnr(container, stego)
     ssim_container = ssim(container, stego)
 
+    if filter_ is not None:
+        stego = filter_(stego)
+
     extracted_wm = qtar.extract(stego, key)
 
     bcr_wm = bcr(wm, extracted_wm)
@@ -32,6 +35,8 @@ def embed(params):
     ssim_wm = ssim(wm, extracted_wm)
 
     return {
+        "stego img":      stego,
+        "extracted wm":   extracted_wm,
         "container psnr": psnr_container,
         "container ssim": ssim_container,
         "watermark psnr": psnr_wm,

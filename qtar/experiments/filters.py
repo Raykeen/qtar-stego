@@ -3,10 +3,9 @@ from PIL import Image
 from PIL.ImageFilter import MedianFilter, UnsharpMask, GaussianBlur
 
 
-im = Image.open("images/Lenna.png")
-
 def none(image):
     return image
+
 
 def jpeg(image, quality):
     buffer = BytesIO()

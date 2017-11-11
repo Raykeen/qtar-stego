@@ -1,12 +1,13 @@
 from qtar.core.argparser import create_argpaser, validate_params
 from qtar.experiments.compare import qtar_vs_cf_qtar
 from qtar.experiments.efficiency import efficiency
+from qtar.experiments.robustness import robustness
 
 
 def main():
     argparser = create_argpaser(False)
     argparser.add_argument('experiment', type=str,
-                           help='one of the experiments: efficiency, qtar-vs-cfqtar')
+                           help='one of the experiments: efficiency, qtar-vs-cfqtar, robustness')
     argparser.add_argument('-rc', '--container_size', metavar='container_size',
                            type=int, nargs=2, default=None,
                            help='resize container image')
@@ -40,6 +41,17 @@ def main():
                                   + ('wmdct' if params['wmdct_mode'] else '') \
                                   + 'efficiency'
         table = efficiency(params)
+
+    elif params['experiment'] == 'robustness':
+        if params['xls_sheet'] is None:
+            params['xls_sheet'] = ('pm' if params['pm_mode'] else '') \
+                                  + ('cf' if params['cf_mode'] else '') \
+                                  + ('wmdct' if params['wmdct_mode'] else '') \
+                                  + 'robustness'
+        table = robustness(params)
+    else:
+        print('Choose one of the experiments.')
+        return
 
     print(table)
 
