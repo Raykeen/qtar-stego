@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from timeit import default_timer as timer
 import ntpath
 
@@ -84,3 +85,21 @@ def classproperty(func):
         func = classmethod(func)
 
     return ClassPropertyDescriptor(func)
+
+
+def pick(dict_, keys):
+    return OrderedDict((key, dict_[key]) for key in keys if key in dict_)
+
+
+def pick_values(dict_, keys):
+    return list(pick(dict_, keys).values())
+
+
+def flatten(lst):
+    flat_list = []
+    for item in lst:
+        if isinstance(item, (tuple, list)):
+            flat_list.extend(item)
+        else:
+            flat_list.append(item)
+    return flat_list

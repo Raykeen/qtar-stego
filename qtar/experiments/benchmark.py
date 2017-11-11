@@ -36,7 +36,8 @@ def embed(params):
         "container ssim": ssim_container,
         "watermark psnr": psnr_wm,
         "watermark ssim": ssim_wm,
-        "watermark bcr": bcr_wm,
-        "container bpp": bpp_
+        "watermark bcr":  bcr_wm,
+        "container bpp":  bpp_,
+        "key size":       key.size
     }
 

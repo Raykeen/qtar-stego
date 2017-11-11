@@ -1,41 +1,14 @@
 from copy import copy
 from collections import OrderedDict
 
-import openpyxl
 import pandas as pd
 from scipy.optimize import minimize_scalar
 
 from qtar.experiments.benchmark import embed
-from qtar.core.argparser import create_argpaser
-from qtar.utils import extract_filename
-from qtar.utils.xlsx import write_table
+from qtar.utils import extract_filename, pick
 from qtar.experiments import TEST_IMAGES_PATH
 
 pd.set_option('display.expand_frame_repr', False)
-
-
-def main():
-    argparser = create_argpaser(False)
-    argparser.add_argument('-rc', '--container_size', metavar='container_size',
-                           type=int, nargs=2, default=None,
-                           help='resize container image')
-    argparser.add_argument('-rw', '--watermark_size', metavar='watermark_size',
-                           type=int, nargs=2, default=None,
-                           help='resize watermark')
-    argparser.add_argument('-xls', '--xls_path', metavar='path',
-                           type=str, default='xls/compare.xlsx',
-                           help='save results to xls file')
-    argparser.add_argument('-sheet', '--xls_sheet', metavar='name',
-                           type=str, default='qtar vs cfqtar',
-                           help='sheet name of xlsx file')
-    argparser.add_argument('-exp', '--experiments_path', metavar='path',
-                           type=str, default='experiments/compare.txt',
-                           help='path to list with experiments')
-
-    args = argparser.parse_args()
-    params = vars(args)
-    qtar_vs_cf_qtar(params)
-
 
 METRICS_NAMES = "container bpp", "container psnr", "container ssim", "watermark psnr", "watermark ssim"
 
@@ -73,10 +46,10 @@ def qtar_vs_cf_qtar(params):
 
         cfqtar_params['quant_power'] = find_q_for_capacity(cfqtar_params, qtar_metrics['container bpp'])
 
-        qtar_metrics = extract_by_keys(qtar_metrics, METRICS_NAMES).values()
+        qtar_metrics = pick(qtar_metrics, METRICS_NAMES).values()
 
         cfqtar_metrics = embed(cfqtar_params)
-        cfqtar_metrics = extract_by_keys(cfqtar_metrics, METRICS_NAMES).values()
+        cfqtar_metrics = pick(cfqtar_metrics, METRICS_NAMES).values()
 
         growth = [cf/qt - 1 for qt, cf in zip(qtar_metrics, cfqtar_metrics)]
 
@@ -98,9 +71,7 @@ def qtar_vs_cf_qtar(params):
 
         table = table.append(result_row)
 
-    print(table)
-
-    table.to_excel(params['xls_path'], sheet_name=params['xls_sheet'])
+    return table
 
 
 def find_q_for_capacity(params, target_bpp):
@@ -124,9 +95,3 @@ def find_q_for_capacity(params, target_bpp):
     return result.x
 
 
-def extract_by_keys(dict_, keys):
-    return OrderedDict((key, dict_[key]) for key in keys if key in dict_)
-
-
-if __name__ == "__main__":
-    main()
