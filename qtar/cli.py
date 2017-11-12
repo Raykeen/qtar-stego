@@ -93,7 +93,14 @@ def embed(params):
             embed_result = qtar.embed(container, watermark, stages=True)
     except NoSpaceError as e:
         print(e)
-        return
+        return {
+        "container psnr": 0,
+        "container ssim": 0,
+        "watermark psnr": 0,
+        "watermark ssim": 0,
+        "watermark bcr": 0,
+        "container bpp": 0
+    }
 
     container = embed_result.img_container
     stego = embed_result.img_stego
