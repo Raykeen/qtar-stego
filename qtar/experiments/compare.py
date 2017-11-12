@@ -17,7 +17,7 @@ def qtar_vs_cf_qtar(params):
     with open(params['experiments_path']) as file:
         images = [line.replace('\n', '').split(' ')[0:2] for line in file.readlines()]
 
-    index_names = ['alg', 'container', 'watermark']
+    index_names = ['container', 'watermark', 'alg']
     headers = ('q',
                'capacity, BPP',
                'container PSNR, dB',
@@ -34,9 +34,12 @@ def qtar_vs_cf_qtar(params):
         params['watermark'] = TEST_IMAGES_PATH + watermark_path
 
         qtar_params = copy(params)
+        qtar_params['cf_mode'] = False
         qtar_params['cf_grid_size'] = False
 
         cfqtar_params = copy(params)
+        cfqtar_params['cf_mode'] = True
+        cfqtar_params['min_block_size'] = 16
         if params['cf_grid_size']:
             cfqtar_params['cf_grid_size'] = params['cf_grid_size']
         else:
@@ -57,9 +60,9 @@ def qtar_vs_cf_qtar(params):
         watermark_file_name = extract_filename(watermark_path)
 
         row_index = pd.MultiIndex.from_tuples([
-            ('QTAR', container_file_name, watermark_file_name),
-            ('CF-QTAR', container_file_name, watermark_file_name),
-            ('Прирост', container_file_name, watermark_file_name)
+            (container_file_name, watermark_file_name, 'QTAR'),
+            (container_file_name, watermark_file_name, 'CF-QTAR'),
+            (container_file_name, watermark_file_name, 'Прирост')
         ], names=index_names)
 
         qtar_row = (qtar_params['quant_power'], *qtar_metrics)
