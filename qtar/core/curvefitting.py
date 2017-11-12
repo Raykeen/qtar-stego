@@ -34,7 +34,9 @@ class CFRegions(MatrixRegions):
         size = 0
         for x in range(width):
             y = math.ceil(curve_func(normal_curve, x))
-            size += height - y
+            col_h = height - y
+            col_h = col_h if col_h >= 0 else 0
+            size += col_h
 
         return size
 
