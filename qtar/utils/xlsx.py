@@ -60,10 +60,10 @@ def prepare_params(params):
     headers = []
     values = []
     if "container" in params:
-        headers.append("Container")
+        headers.append("Контейнер")
         values.append(params['container'].split("\\")[-1].split(".")[0])
     if "watermark" in params:
-        headers.append("Watermark")
+        headers.append("Секретное изображение")
         values.append(params['watermark'].split("\\")[-1].split(".")[0])
     if "homogeneity_threshold" in params:
         th = params["homogeneity_threshold"]
@@ -73,14 +73,17 @@ def prepare_params(params):
         else:
             headers.append("th")
             values.append(th)
-    if "min_block_size" in params and "max_block_size" in params:
-        headers.extend(("min_b, px", "max_b, px"))
-        values.extend((params["min_block_size"], params["max_block_size"]))
+    if "min_block_size" in params:
+        headers.append("min_b, px")
+        values.append(params["min_block_size"])
+    if "max_block_size" in params:
+        headers.append("max_b, px")
+        values.append(params["max_block_size"])
     if "quant_power" in params:
-        headers.append("qp")
+        headers.append("q")
         values.append(params["quant_power"])
     if "ch_scale" in params:
-        headers.append("scale")
+        headers.append("k")
         values.append(params["ch_scale"])
     if "offset" in params:
         headers.extend(("x, px", "y, px"))
@@ -93,22 +96,22 @@ def prepare_params(params):
         values.append(params['wmdct_block_size'])
 
     if "container psnr" in params:
-        headers.append("container PSNR, db")
+        headers.append("PSNR_C, db")
         values.append(params["container psnr"])
     if "container ssim" in params:
-        headers.append("container SSIM")
+        headers.append("SSIM_C")
         values.append(params["container ssim"])
     if "watermark psnr" in params:
-        headers.append("watermark PSNR, db")
+        headers.append("PSNR_W, db")
         values.append(params["watermark psnr"])
     if "watermark ssim" in params:
-        headers.append("watermark SSIM")
+        headers.append("SSIM_W")
         values.append(params["watermark ssim"])
     if "watermark bcr" in params:
-        headers.append("watermark BCR")
+        headers.append("BCR")
         values.append(params["watermark bcr"])
     if "container bpp" in params:
-        headers.append("capacity, BPP")
+        headers.append("BPP")
         values.append(params["container bpp"])
 
     return {

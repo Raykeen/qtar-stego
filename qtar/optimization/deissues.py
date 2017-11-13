@@ -572,5 +572,65 @@ class OptIssue11(OptIssueBase):
         }
 
 
+class OptIssue12(OptIssueBase):
+    desc = 'Issue 12\n' \
+           'func: -((psnr_c - def_psnr_c) / def_psnr_c + (bpp - def_bpp) / def_bpp + (psnr_w - def_psnr_w) / def_psnr_w)\n' \
+           'params: threshold for 3 brightness levels, min_b'
+    bounds = ((0, 1), (0, 1), (0, 1), (3, 10))
+
+    np = 20
+    cr = 0.6938
+    f = 0.9314
+    evaluations = 10020
+
+    @classmethod
+    def func(cls, args, container, watermark, params, default_metrics, callback):
+        def_psnr_c = default_metrics['container psnr']
+        def_psnr_w = default_metrics['watermark psnr']
+        def_bpp = default_metrics['container bpp']
+
+        params = copy(params)
+        new_params = {
+            'homogeneity_threshold': (args[0], args[1], args[2]),
+            'min_block_size': 2 ** int(args[3])
+        }
+
+        params.update(new_params)
+
+        qtar = QtarStego.from_dict(params)
+
+        try:
+            embed_result = qtar.embed(container, watermark)
+            wm_extracted = qtar.extract(embed_result.img_stego, embed_result.key)
+        except Exception as e:
+            cls.eval_callback(callback, error=e, new_params=new_params)
+            return 0
+
+        cls.eval_callback(callback)
+
+        psnr_c = psnr(embed_result.img_container, embed_result.img_stego)
+        psnr_w = psnr(embed_result.img_watermark, wm_extracted)
+        bpp_ = embed_result.bpp
+
+        func = -((psnr_c - def_psnr_c) / def_psnr_c + (bpp_ - def_bpp) / def_bpp + (psnr_w - def_psnr_w) / def_psnr_w)
+
+        if psnr_c < def_psnr_c or bpp_ < def_bpp or psnr_w < def_psnr_w:
+            return 0
+
+        return func
+
+    @staticmethod
+    def get_new_params(result, def_params):
+        if result.fun == 0:
+            return {
+                'homogeneity_threshold': def_params['homogeneity_threshold'],
+                'min_block_size': def_params['min_block_size']
+            }
+        return {
+            'homogeneity_threshold': (result.x[0], result.x[1], result.x[2]),
+            'min_block_size': 2 ** int(result.x[3])
+        }
+
+
 ISSUES = [OptIssue1, OptIssue2, OptIssue3, OptIssue4, OptIssue5, OptIssue6, OptIssue7, OptIssue8, OptIssue9,
-          OptIssue10, OptIssue11]
+          OptIssue10, OptIssue11, OptIssue12]
