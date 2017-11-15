@@ -47,7 +47,7 @@ def get_param_range(params):
     param = params['param']
 
     return {
-        'homogeneity_threshold': arange(0.05, 1.01, step),
+        'homogeneity_threshold': arange(0.01, 1.01, step),
         'min_block_size': map(lambda x: 2**x, range(3, int(math.log2(max_b)) + 1, int_step)),
         'max_block_size': map(lambda x: 2**x, range(int(math.log2(min_b)), int(math.log2(max_b)) + 1, int_step)),
         'quant_power': arange(0.1, 1, step),
@@ -79,10 +79,15 @@ def to_xlsx(results, params):
         workbook = openpyxl.Workbook()
         workbook.guess_types = True
 
-    wm_name = extract_filename(params["watermark"])
     container_name = extract_filename(params["container"])
 
     sheet_name = "%s %s" % (PARAMS_NAMES[params['param']], container_name)
+    if params['cf_mode']:
+        sheet_name = 'cf ' + sheet_name
+    if params['wmdct_mode']:
+        sheet_name = 'wmdct ' + sheet_name
+    if params['pm_mode']:
+        sheet_name = 'pm ' + sheet_name
 
     try:
         sheet = workbook.get_sheet_by_name(sheet_name)
