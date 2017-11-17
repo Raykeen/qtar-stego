@@ -26,8 +26,7 @@ def zigzag_embed_to_cfregions(wm_regions, cf_regions: CFRegions):
         indices = iter(zz_order[::-1])
 
         for wm_data_item in wm_data:
-            while True:
-                y, x = next(indices)
+            for y, x in indices:
                 y = y - (height - region[x].size)
 
                 if y < 0:
@@ -63,8 +62,7 @@ def zigzag_extract_from_cfregions(cf_regions: CFRegions, wm_shape, wm_block_size
         wm_data = []
 
         for _ in range(size):
-            while True:
-                y, x = next(indices)
+            for y, x in indices:
                 y = y - (height - region[x].size)
 
                 if y < 0:
@@ -84,13 +82,17 @@ def zigzag_extract_from_cfregions(cf_regions: CFRegions, wm_shape, wm_block_size
 
     while not all(wm_flat_regions_filled):
         for i, wm_region_size, wm_flat_region in zip(count(), wm_regions_sizes, wm_flat_regions):
-            if len(wm_flat_region) < wm_region_size:
-                try:
-                    wm_flat_regions[i].append(next(wm_data_flat) * SCALE)
-                except StopIteration:
-                    break
-            else:
+            if wm_flat_regions_filled[i]:
+                continue
+
+            if len(wm_flat_region) >= wm_region_size:
                 wm_flat_regions_filled[i] = True
+                continue
+
+            try:
+                wm_flat_regions[i].append(next(wm_data_flat) * SCALE)
+            except StopIteration:
+                break
 
     for i, wm_region in enumerate(wm_flat_regions):
         shape = wm_regions[i].shape
@@ -122,20 +124,28 @@ def zigzag_extract_from_regions(mx_regions, wm_shape, wm_block_size):
     wm_mx = np.zeros(wm_shape)
     wm_regions = divide_into_equal_regions(wm_mx, wm_block_size)
     wm_regions_sizes = [wm_region.size for wm_region in wm_regions]
+
     wm_data_by_regions = [zigzag_from_mx(region)[::-1] for region in mx_regions]
     wm_data_flat = interweave(wm_data_by_regions)
-    wm_flat_regions = [[] for _ in range(len(wm_regions))]
-    wm_flat_regions_filled = [False for _ in range(len(wm_regions))]
+
+    wm_regions_count = len(wm_regions)
+
+    wm_flat_regions = [[] for _ in range(wm_regions_count)]
+    wm_flat_regions_filled = [False for _ in range(wm_regions_count)]
 
     while not all(wm_flat_regions_filled):
         for i, wm_region_size, wm_flat_region in zip(count(), wm_regions_sizes, wm_flat_regions):
-            if len(wm_flat_region) < wm_region_size:
-                try:
-                    wm_flat_regions[i].append(next(wm_data_flat) * SCALE)
-                except StopIteration:
-                    break
-            else:
+            if wm_flat_regions_filled[i]:
+                continue
+
+            if len(wm_flat_region) >= wm_region_size:
                 wm_flat_regions_filled[i] = True
+                continue
+
+            try:
+                wm_flat_regions[i].append(next(wm_data_flat) * SCALE)
+            except StopIteration:
+                break
 
     for i, wm_region in enumerate(wm_flat_regions):
         shape = wm_regions[i].shape
@@ -145,21 +155,25 @@ def zigzag_extract_from_regions(mx_regions, wm_shape, wm_block_size):
 
 
 def sort_wm_by_regions(wm_iter, mx_regions):
+    regions_count = len(mx_regions)
     regions_sizes = [region.size for region in mx_regions]
-    wm_data_by_regions = [[] for _ in mx_regions]
+    wm_data_by_regions = [[] for _ in range(regions_count)]
+    wm_data_by_regions_filled = [False for _ in range(regions_count)]
 
-    while True:
+    while not all(wm_data_by_regions_filled):
         for i, wm_data, region_size in zip(count(), wm_data_by_regions, regions_sizes):
-            if len(wm_data) >= region_size:
+            if wm_data_by_regions_filled[i]:
                 continue
+
+            if len(wm_data) >= region_size:
+                wm_data_by_regions_filled[i] = True
+                continue
+
             try:
-                wm_data = next(wm_iter) / SCALE
-                wm_data_by_regions[i].append(wm_data)
+                new_wm_data = next(wm_iter) / SCALE
+                wm_data.append(new_wm_data)
             except StopIteration:
-                break
-        else:
-            continue
-        break
+                return wm_data_by_regions
 
     return wm_data_by_regions
 
