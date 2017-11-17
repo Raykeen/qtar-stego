@@ -91,10 +91,13 @@ def prepare_params(params):
     if not ('cf_mode' in params and params['cf_mode'] is False) and 'cf_grid_size' in params:
         headers.append('cf')
         values.append(params['cf_grid_size'])
-    if not ('wmdct_mode' in params and params['wmdct_mode'] is False) and 'wmdct_block_size' in params:
-        headers.append('wm_b')
-        values.append(params['wmdct_block_size'])
-
+    if not ('wmdct_mode' in params and params['wmdct_mode'] is False):
+        if 'wmdct_block_size' in params:
+            headers.append('v, px')
+            values.append(params['wmdct_block_size'])
+        if 'wmdct_scale' in params:
+            headers.append('sk')
+            values.append(params['wmdct_scale'])
     if "container psnr" in params:
         headers.append("PSNR_C, db")
         values.append(params["container psnr"])

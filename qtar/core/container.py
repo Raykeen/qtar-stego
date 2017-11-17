@@ -27,6 +27,7 @@ class Key:
                  cf_grid_size=None,
                  wmdct_mode=False,
                  wmdct_block_size=None,
+                 wmdct_scale=None
                  ):
         self.chs_qt_key = chs_qt_key or []
         self.chs_pm_fix_key = chs_pm_fix_key or []
@@ -41,6 +42,7 @@ class Key:
         self.cf_grid_size = cf_grid_size
         self.wmdct_mode = wmdct_mode
         self.wmdct_block_size = wmdct_block_size
+        self.wmdct_scale = wmdct_scale
 
     @property
     def params_bytes(self):
@@ -48,7 +50,7 @@ class Key:
 
         chs_count = len(self.chs_qt_key)
         bytes += struct.pack(PARAMS_STRUCT,
-                             self.ch_scale,
+                             self.wmdct_scale if self.wmdct_mode else self.ch_scale,
                              *self.offset,
                              *self.wm_shape,
                              chs_count)
@@ -159,7 +161,7 @@ class Key:
 
             params_bytes = file.read(struct.calcsize(PARAMS_STRUCT))
 
-            ch_scale, x, y, wm_w, wm_h, chs_count = struct.unpack(PARAMS_STRUCT, params_bytes)
+            scale, x, y, wm_w, wm_h, chs_count = struct.unpack(PARAMS_STRUCT, params_bytes)
 
             offset = x, y
             wm_shape = wm_w, wm_h
@@ -175,8 +177,13 @@ class Key:
                 cf_grid_size = read_int(file)
 
             wmdct_block_size = None
+            ch_scale = None
+            wmdct_scale = None
             if wmdct_mode:
+                wmdct_scale = scale
                 wmdct_block_size = read_int(file)
+            else:
+                ch_scale = scale
 
             chs_qt_key = []
             chs_ar_key = []
@@ -218,7 +225,8 @@ class Key:
                    cf_mode,
                    cf_grid_size,
                    wmdct_mode,
-                   wmdct_block_size)
+                   wmdct_block_size,
+                   wmdct_scale)
 
 
 class Container:

@@ -11,7 +11,8 @@ PARAMS_NAMES = {
     'cf_mode': 'cf',
     'cf_grid_size': 'cf, px',
     'wmdct_mode': 'wmdct',
-    'wmdct_block_size': 'wm_b, px'
+    'wmdct_block_size': 'v, px',
+    'wmdct_scale': 'sk'
 }
 
 METRICS_NAMES = {

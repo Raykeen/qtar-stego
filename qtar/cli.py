@@ -22,6 +22,7 @@ watermark block size:  {wmdct_block_size}
 quantization power:    {quant_power:.2f}
 cf grid size:          {cf_grid_size}
 scale:                 {ch_scale:.2f}
+wmdct scale            {wmdct_scale:.2f}
 offset:                {offset}
 """
 METRICS_INFO_TEMPLATE = """

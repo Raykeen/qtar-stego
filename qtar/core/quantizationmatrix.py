@@ -32,4 +32,4 @@ def generate_quantization_matrix(n=8):
 
 @lru_cache(maxsize=None)
 def generate_flat_matrix(n=8):
-    return zoom(asarray(TO_FLAT_MATRIX), n / 8, order=1) * 5
+    return zoom(asarray(TO_FLAT_MATRIX), n / 8, order=1)

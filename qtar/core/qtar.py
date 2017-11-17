@@ -27,7 +27,8 @@ DEFAULT_PARAMS = {
     'cf_mode':               False,
     'cf_grid_size':          8,
     'wmdct_mode':            False,
-    'wmdct_block_size':      8
+    'wmdct_block_size':      8,
+    'wmdct_scale':           0.25,
 }
 
 
@@ -43,7 +44,8 @@ class QtarStego:
                  cf_mode=DEFAULT_PARAMS['cf_mode'],
                  cf_grid_size=DEFAULT_PARAMS['cf_grid_size'],
                  wmdct_mode=DEFAULT_PARAMS['wmdct_mode'],
-                 wmdct_block_size=DEFAULT_PARAMS['wmdct_block_size']):
+                 wmdct_block_size=DEFAULT_PARAMS['wmdct_block_size'],
+                 wmdct_scale=DEFAULT_PARAMS['wmdct_scale']):
         self.homogeneity_threshold = homogeneity_threshold
         self.min_block_size = min_block_size
         self.max_block_size = max_block_size
@@ -55,6 +57,7 @@ class QtarStego:
         self.cf_grid_size = cf_grid_size
         self.wmdct_mode = wmdct_mode
         self.wmdct_block_size = wmdct_block_size
+        self.wmdct_scale = wmdct_scale
 
     def embed(self, img_container, img_watermark, resize_to_fit=True, stages=False):
         size = int(pow(2, int(log2(min(img_container.width, img_container.height)))))
@@ -72,7 +75,8 @@ class QtarStego:
                   cf_mode=self.cf_mode,
                   cf_grid_size=self.cf_grid_size if self.cf_mode else None,
                   wmdct_mode=self.wmdct_mode,
-                  wmdct_block_size=self.wmdct_block_size if self.wmdct_mode else None)
+                  wmdct_block_size=self.wmdct_block_size if self.wmdct_mode else None,
+                  wmdct_scale=self.wmdct_scale if self.wmdct_mode else None)
         container = Container(key=key)
 
         chs_regions = []
@@ -124,7 +128,7 @@ class QtarStego:
             if self.wmdct_mode:
                 wm_regions = divide_into_equal_regions(wm_ch, self.wmdct_block_size)
                 wm_dct_regions = self.__dct_regions(wm_regions)
-                wm_ch = self.__quant_regions(wm_dct_regions)
+                wm_ch = self.__quant_regions(wm_dct_regions, self.wmdct_scale)
 
             embedded_dct_regions = self.__embed_in_regions(embed_dct_regions, wm_ch)
             chs_embedded_dct_regions.append(embedded_dct_regions)
@@ -156,7 +160,7 @@ class QtarStego:
                 "2-quad_tree": self.__regions_to_image(chs_regions, container_image_mode,
                                                        borders=True, only_right_bottom=True),
                 "3-adaptive_regions": self.__regions_to_image(container.chs_regions_dct_embed, container_image_mode,
-                                                              borders=True, factor=10),
+                                                              factor=10),
                 "4-dct": self.__regions_to_image(chs_embedded_dct_regions, container_image_mode,
                                                  factor=10),
                 "5-watermark": img_watermark,
@@ -189,21 +193,21 @@ class QtarStego:
         return regions_dct
 
     @staticmethod
-    def __quant_regions(regions):
+    def __quant_regions(regions, scale):
         quantized = MatrixRegions(regions.rects, copy(regions.matrix))
         for i, region in enumerate(quantized):
             height, width = region.shape
             q_mx = generate_flat_matrix(max((width, height)))
-            quantized[i] = region / q_mx[0:height, 0:width]
+            quantized[i] = region / (q_mx[0:height, 0:width] / scale)
         return quantized
 
     @staticmethod
-    def __dequant_regions(regions):
+    def __dequant_regions(regions, scale):
         dequantized = MatrixRegions(regions.rects, copy(regions.matrix))
         for i, region in enumerate(dequantized):
             height, width = region.shape
             q_mx = generate_flat_matrix(max((width, height)))
-            dequantized[i] = region * q_mx[0:height, 0:width]
+            dequantized[i] = region * (q_mx[0:height, 0:width] / scale)
         return dequantized
 
     @classmethod
@@ -220,7 +224,6 @@ class QtarStego:
             regions = MatrixRegions(regions.rects, copy(regions.matrix))
             if self.wmdct_mode:
                 return zigzag_embed_to_regions(ch_watermark, regions)
-
 
         wm_iter = ch_watermark.flat
 
@@ -282,7 +285,7 @@ class QtarStego:
 
             if key.wmdct_mode:
                 wm_quantized_regions = cls.__extract_from_regions(regions_extract, key)
-                wm_dct_regions = cls.__dequant_regions(wm_quantized_regions)
+                wm_dct_regions = cls.__dequant_regions(wm_quantized_regions, key.wmdct_scale)
                 wm_regions = cls.__idct_regions(wm_dct_regions)
                 ch_watermark = wm_regions.matrix
             else:
@@ -387,7 +390,8 @@ class QtarStego:
             'cf_mode': self.cf_mode,
             'cf_grid_size': self.cf_grid_size,
             'wmdct_mode': self.wmdct_mode,
-            'wmdct_block_size': self.wmdct_block_size
+            'wmdct_block_size': self.wmdct_block_size,
+            'wmdct_scale': self.wmdct_scale
         }
 
     @staticmethod
@@ -403,7 +407,8 @@ class QtarStego:
             params['cf_mode'],
             params['cf_grid_size'],
             params['wmdct_mode'],
-            params['wmdct_block_size']
+            params['wmdct_block_size'],
+            params['wmdct_scale']
         )
 
 

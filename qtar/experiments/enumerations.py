@@ -83,5 +83,6 @@ def get_param_range(params):
         'quant_power': np.arange(0.1, 1, 0.01),
         'cf_grid_size': map(lambda x: 2**x, range(0, int(math.log2(min_b)) + 1, 1)),
         'ch_scale': np.arange(0.01, 10, 0.01),
-        'offset': product(range(0, container_size[0], 1), range(0, container_size[1], 1))
+        'offset': product(range(0, container_size[0], 1), range(0, container_size[1], 1)),
+        'wmdct_scale': np.arange(0.01, 1.01, 0.01)
     }[param]

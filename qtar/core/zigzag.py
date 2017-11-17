@@ -8,9 +8,6 @@ from qtar.core.matrixregion import MatrixRegions, divide_into_equal_regions
 from qtar.core.curvefitting import CFRegions
 
 
-SCALE = 1
-
-
 def zigzag_embed_to_cfregions(wm_regions, cf_regions: CFRegions):
     wm_iter = zigzag_order_regions(wm_regions)
     wm_by_regions = sort_wm_by_regions(wm_iter, cf_regions)
@@ -90,7 +87,7 @@ def zigzag_extract_from_cfregions(cf_regions: CFRegions, wm_shape, wm_block_size
                 continue
 
             try:
-                wm_flat_regions[i].append(next(wm_data_flat) * SCALE)
+                wm_flat_regions[i].append(next(wm_data_flat))
             except StopIteration:
                 break
 
@@ -143,7 +140,7 @@ def zigzag_extract_from_regions(mx_regions, wm_shape, wm_block_size):
                 continue
 
             try:
-                wm_flat_regions[i].append(next(wm_data_flat) * SCALE)
+                wm_flat_regions[i].append(next(wm_data_flat))
             except StopIteration:
                 break
 
@@ -170,7 +167,7 @@ def sort_wm_by_regions(wm_iter, mx_regions):
                 continue
 
             try:
-                new_wm_data = next(wm_iter) / SCALE
+                new_wm_data = next(wm_iter)
                 wm_data.append(new_wm_data)
             except StopIteration:
                 return wm_data_by_regions
