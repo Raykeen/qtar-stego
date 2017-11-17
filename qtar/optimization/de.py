@@ -105,8 +105,10 @@ def run_de(params, Issue):
     return new_metrics
 
 
-def callback(evaluations, total, time, error=None, new_params=None):
-    print_progress_bar(evaluations, total, time=time, length=30, file=sys.stderr)
+def callback(evaluations, total, time, error=None, new_params=None, f=None):
+    if f is None:
+        f = ''
+    print_progress_bar(evaluations, total, time=time, file=sys.stderr, suffix='{:.4f}'.format(f))
 
     if error:
         print('\n\n' + str(error) + '\n\n' + str(new_params) + '\n', file=sys.stderr)

@@ -23,7 +23,7 @@ def extract_filename(path):
     return ntpath.basename(path).split(".")[0]
 
 
-def print_progress_bar(iteration, total, time, prefix='', suffix='', decimals=1, length=100, fill='█', **kwargs):
+def print_progress_bar(iteration, total, time, prefix='', suffix='', decimals=1, **kwargs):
     """
     Call in a loop to create terminal progress bar
     @params:
@@ -36,13 +36,14 @@ def print_progress_bar(iteration, total, time, prefix='', suffix='', decimals=1,
         fill        - Optional  : bar fill character (Str)
     """
     percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-    filled_length = int(length * iteration // total)
-    bar = fill * filled_length + '-' * (length - filled_length)
 
     remained = format_time(time * (total - iteration))
 
-    print('\r%s |%s| %s%% | %s/%s | %s remained | %s' %
-          (prefix, bar, percent, iteration, total, remained, suffix),
+    if suffix is None:
+        suffix = ''
+
+    print('\r%s | %s%% | %s/%s | %s remained | %s' %
+          (prefix, percent, iteration, total, remained, suffix),
           end='\r', **kwargs)
 
     # Print New Line on Complete
