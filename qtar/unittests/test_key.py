@@ -28,7 +28,7 @@ class TestKey(TestCase):
 
         for ch in range(len(key.chs_qt_key)):
             self.assertEqual(opened_key.chs_qt_key[ch], key.chs_qt_key[ch], "qt_key")
-            self.assertEqual(opened_key.chs_ar_key[ch], key.chs_ar_key[ch], "ar_key")
+            # self.assertCountEqual(opened_key.chs_cf_key[ch], key.chs_cf_key[ch], "cf_key")
 
     def tearDown(self):
         self.container.close()

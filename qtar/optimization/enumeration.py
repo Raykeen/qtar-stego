@@ -2,10 +2,11 @@ from PIL import Image
 
 from qtar.optimization.metrics import psnr, bcr
 from qtar.core.qtar import QtarStego, DEFAULT_PARAMS
-from qtar.core.argparser import argparser
+from qtar.core.argparser import create_argpaser
 
 
 def main():
+    argparser = create_argpaser()
     argparser.add_argument('-rc', '--container_size', metavar='container_size',
                            type=int, nargs=2, default=None,
                            help='resize container image')

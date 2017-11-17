@@ -13,15 +13,21 @@ def save_de_results(file, def_params, new_params, def_metrics, new_metrics):
         workbook.guess_types = True
 
     issue = def_params["issue"]
-    def_params = __prepare_params(def_params)
-    new_params = __prepare_params(new_params)
-    def_metrics = __prepare_params(def_metrics)
-    new_metrics = __prepare_params(new_metrics)
+
+    sheet_name = "issue " + str(issue) + " " +\
+                 ('pm' if def_params['pm_mode'] else '') +\
+                 ('cf' if def_params['cf_mode'] else '') +\
+                 ('wmdct' if def_params['wmdct_mode'] else '')
+
+    def_params = prepare_params(def_params)
+    new_params = prepare_params(new_params)
+    def_metrics = prepare_params(def_metrics)
+    new_metrics = prepare_params(new_metrics)
 
     try:
-        sheet = workbook.get_sheet_by_name("issue " + str(issue))
+        sheet = workbook.get_sheet_by_name(sheet_name)
     except:
-        sheet = workbook.create_sheet("issue " + str(issue))
+        sheet = workbook.create_sheet(sheet_name)
         headers = (*def_params["headers"], *def_metrics["headers"], *new_params["headers"], *new_metrics["headers"])
         past_list_in_row(sheet, first_col, first_row, headers)
 
@@ -50,14 +56,14 @@ def cells_range(col1, row1, col2, row2):
     return cell(col1, row1) + ":" + cell(col2, row2)
 
 
-def __prepare_params(params):
+def prepare_params(params):
     headers = []
     values = []
     if "container" in params:
-        headers.append("Container")
+        headers.append("Контейнер")
         values.append(params['container'].split("\\")[-1].split(".")[0])
     if "watermark" in params:
-        headers.append("Watermark")
+        headers.append("Секретное изображение")
         values.append(params['watermark'].split("\\")[-1].split(".")[0])
     if "homogeneity_threshold" in params:
         th = params["homogeneity_threshold"]
@@ -67,32 +73,45 @@ def __prepare_params(params):
         else:
             headers.append("th")
             values.append(th)
-    if "min_block_size" in params and "max_block_size" in params:
-        headers.extend(("min", "max"))
-        values.extend((params["min_block_size"], params["max_block_size"]))
+    if "min_block_size" in params:
+        headers.append("min_b, px")
+        values.append(params["min_block_size"])
+    if "max_block_size" in params:
+        headers.append("max_b, px")
+        values.append(params["max_block_size"])
     if "quant_power" in params:
-        headers.append("qp")
+        headers.append("q")
         values.append(params["quant_power"])
     if "ch_scale" in params:
-        headers.append("scale")
+        headers.append("k")
         values.append(params["ch_scale"])
     if "offset" in params:
-        headers.extend(("x", "y"))
+        headers.extend(("x, px", "y, px"))
         values.extend((params["offset"][0], params["offset"][1]))
+    if not ('cf_mode' in params and params['cf_mode'] is False) and 'cf_grid_size' in params:
+        headers.append('cf')
+        values.append(params['cf_grid_size'])
+    if not ('wmdct_mode' in params and params['wmdct_mode'] is False):
+        if 'wmdct_block_size' in params:
+            headers.append('v, px')
+            values.append(params['wmdct_block_size'])
+        if 'wmdct_scale' in params:
+            headers.append('sk')
+            values.append(params['wmdct_scale'])
     if "container psnr" in params:
-        headers.append("CONTAINER PSNR")
+        headers.append("PSNR_C, db")
         values.append(params["container psnr"])
     if "container ssim" in params:
-        headers.append("CONTAINER SSIM")
+        headers.append("SSIM_C")
         values.append(params["container ssim"])
     if "watermark psnr" in params:
-        headers.append("WATERMARK PSNR")
+        headers.append("PSNR_W, db")
         values.append(params["watermark psnr"])
     if "watermark ssim" in params:
-        headers.append("WATERMARK SSIM")
+        headers.append("SSIM_W")
         values.append(params["watermark ssim"])
     if "watermark bcr" in params:
-        headers.append("WATERMARK BCR")
+        headers.append("BCR")
         values.append(params["watermark bcr"])
     if "container bpp" in params:
         headers.append("BPP")
@@ -110,3 +129,7 @@ def past_list_in_row(sheet, col, row, list):
         col += 1
     return col
 
+
+def write_table(sheet, table):
+    for row in table:
+        sheet.append(row)
