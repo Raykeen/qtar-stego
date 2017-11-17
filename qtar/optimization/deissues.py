@@ -512,12 +512,14 @@ class OptIssue11(OptIssueBase):
     desc = 'Issue 11\n' \
            'func: -((psnr_c - def_psnr_c) / def_psnr_c + (bpp - def_bpp) / def_bpp + (psnr_w - def_psnr_w) / def_psnr_w)\n' \
            'params: th1, th2, th3, cf, wm_b'
-    bounds = ((0, 1), (0, 1), (0, 1), (0, 4), (0, 10))
+    bounds = ((0.1, 1), (0.1, 1), (0.1, 1), (0, 4), (3, 10))
 
-    np = 20
-    cr = 0.6938
-    f = 0.9314
-    evaluations = 10000
+    np = 17
+    cr = 0.6301
+    f = 0.7122
+    evaluations = 1000
+
+    best_one = 0
 
     @classmethod
     def func(cls, args, container, watermark, params, default_metrics, callback):
@@ -540,10 +542,8 @@ class OptIssue11(OptIssueBase):
             embed_result = qtar.embed(container, watermark)
             wm_extracted = qtar.extract(embed_result.img_stego, embed_result.key)
         except Exception as e:
-            cls.eval_callback(callback, error=e, new_params=new_params)
+            cls.eval_callback(callback, error=e, new_params=new_params, f=cls.best_one)
             return 0
-
-        cls.eval_callback(callback)
 
         psnr_c = psnr(embed_result.img_container, embed_result.img_stego)
         psnr_w = psnr(embed_result.img_watermark, wm_extracted)
@@ -552,7 +552,12 @@ class OptIssue11(OptIssueBase):
         func = -((psnr_c - def_psnr_c) / def_psnr_c + (bpp_ - def_bpp) / def_bpp + (psnr_w - def_psnr_w) / def_psnr_w)
 
         if psnr_c < def_psnr_c or bpp_ < def_bpp or psnr_w < def_psnr_w:
-            return 0
+            func = 0
+
+        if func < cls.best_one:
+            cls.best_one = func
+
+        cls.eval_callback(callback, f=cls.best_one)
 
         return func
 
