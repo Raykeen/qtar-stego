@@ -78,11 +78,12 @@ def get_param_range(params):
 
     return {
         'homogeneity_threshold': np.arange(0.01, 1.01, 0.01),
-        'min_block_size': map(lambda x: 2**x, range(3, int(math.log2(max_b)) + 1, 1)),
-        'max_block_size': map(lambda x: 2**x, range(int(math.log2(min_b)), int(math.log2(max_b)) + 1, 1)),
+        'min_block_size': map(lambda x: 2**x, range(3, int(math.log2(max_b)) + 1)),
+        'max_block_size': map(lambda x: 2**x, range(int(math.log2(min_b)), int(math.log2(max_b)) + 1)),
         'quant_power': np.arange(0.1, 1, 0.01),
-        'cf_grid_size': map(lambda x: 2**x, range(0, int(math.log2(min_b)) + 1, 1)),
-        'ch_scale': np.arange(0.01, 10, 0.01),
-        'offset': product(range(0, container_size[0], 1), range(0, container_size[1], 1)),
-        'wmdct_scale': np.arange(0.01, 1.01, 0.01)
+        'cf_grid_size': map(lambda x: 2**x, range(0, int(math.log2(min_b)) + 1)),
+        'ch_scale': np.arange(0.1, 20, 0.1),
+        'offset': product(range(0, container_size[0], 1), range(0, container_size[1])),
+        'wmdct_scale': np.arange(0.01, 1.01, 0.01),
+        'wmdct_block_size': map(lambda x: 2**x, range(3, 10))
     }[param]
