@@ -1,16 +1,13 @@
-import openpyxl
-from openpyxl.utils.dataframe import dataframe_to_rows
-
-from qtar.core.argparser import create_argpaser, validate_params
+from qtar.cli.qtarargparser import get_qtar_argpaser, validate_params
+from qtar.experiments import PARAMS_NAMES
 from qtar.experiments.compare import qtar_vs_cf_qtar
 from qtar.experiments.efficiency import efficiency
-from qtar.experiments.robustness import robustness
 from qtar.experiments.enumerations import enumerations
-from qtar.experiments import PARAMS_NAMES
+from qtar.experiments.robustness import robustness
 
 
 def main():
-    argparser = create_argpaser(False)
+    argparser = get_qtar_argpaser(False)
     argparser.add_argument('experiment', type=str,
                            help='one of the experiments: efficiency, qtar-vs-cfqtar, robustness, enumerations')
     argparser.add_argument('-rc', '--container_size', metavar='container_size',

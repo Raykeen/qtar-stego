@@ -1,22 +1,21 @@
+import math
 from copy import copy
 from itertools import product
-import math
 
 import openpyxl
+from PIL import Image
 from numpy import arange
 
-from PIL import Image
-
 from qtar.cli import embed
-from qtar.core.argparser import create_argpaser
-from qtar.utils.xlsx import past_list_in_row
+from qtar.cli.qtarargparser import get_qtar_argpaser
 from qtar.core.qtar import DEFAULT_PARAMS
-from qtar.utils import extract_filename
 from qtar.experiments import PARAMS_NAMES, METRICS_NAMES
+from qtar.utils import extract_filename
+from qtar.utils.xlsx import past_list_in_row
 
 
 def main():
-    argparser = create_argpaser()
+    argparser = get_qtar_argpaser()
     argparser.add_argument('-rc', '--container_size', metavar='container_size',
                            type=int, nargs=2, default=None,
                            help='resize container image')

@@ -1,0 +1,1 @@
+from qtar.cli.cli import main
