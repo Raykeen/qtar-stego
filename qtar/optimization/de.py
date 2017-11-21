@@ -4,7 +4,7 @@ from copy import copy
 from PIL import Image
 from scipy.optimize import differential_evolution
 
-from qtar.cli import embed
+from qtar.cli.test import test
 from qtar.cli.qtarargparser import get_qtar_argpaser, validate_params
 from qtar.optimization.deissues import ISSUES
 from qtar.utils import benchmark, print_progress_bar
@@ -60,7 +60,7 @@ def run_de(params, Issue):
     params['save_stages'] = False
     params['key'] = None
     print('Embedding with default params:')
-    def_metrics = embed(params)
+    def_metrics = test(params)
 
     de_info = DE_INFO_TEMPLATE.format(i=Issue)
     print(de_info)
@@ -90,7 +90,7 @@ def run_de(params, Issue):
     print('Embedding with new params:')
     def_params = copy(params)
     params.update(new_params)
-    new_metrics = embed(params)
+    new_metrics = test(params)
 
     if params['xls_path']:
         while True:

@@ -14,16 +14,16 @@ key size:       {key.size} """
 
 def get_embed_argparser():
     argparser = get_qtar_argpaser()
-    argparser.add_argument('-r', '--container_size', metavar='container size',
+    argparser.add_argument('-r', '--container-size', metavar='container size',
                            type=int, nargs=2, default=None,
                            help='resize container image')
-    argparser.add_argument('-R', '--secretimage_size', metavar='secret-image size',
+    argparser.add_argument('-R', '--secret-image-size', metavar='secret-image size',
                            type=int, nargs=2, default=None,
                            help='resize secret image')
     argparser.add_argument('-S', '--stego', metavar='stego path',
-                           type=int, default=None,
+                           type=str, default=None,
                            help='path to save stego image')
-    argparser.add_argument('-key', '--key', metavar='key path',
+    argparser.add_argument('-k', '--key', metavar='key path',
                            type=str, default='key.qtarkey',
                            help='path to save key')
     return argparser
@@ -34,8 +34,8 @@ def embed(params):
     if params['container_size']:
         container = container.resize(params['container_size'], Image.BILINEAR)
     watermark = Image.open(params['secret-image'])
-    if params['secretimage_size']:
-        watermark = watermark.resize(params['secretimage_size'], Image.BILINEAR)
+    if params['secret_image_size']:
+        watermark = watermark.resize(params['secret_image_size'], Image.BILINEAR)
 
     qtar = QtarStego.from_dict(params)
 
@@ -50,7 +50,7 @@ def embed(params):
     key = embed_result.key
 
     if params['stego'] is None:
-        stego_path = 'stego_%s.bmp' % extract_filename(params['container'])
+        stego_path = 'stego_%s.png' % extract_filename(params['container'])
     else:
         stego_path = params['stego']
 

@@ -16,10 +16,10 @@ def get_qtar_argpaser(with_images=True):
     argparser.add_argument('-t', '--threshold', dest='homogeneity_threshold', metavar='threshold',
                            type=float, nargs='+', default=DEFAULT_PARAMS['homogeneity_threshold'],
                            help='homogeneity thresholds for different brightness levels   float[0, 1])')
-    argparser.add_argument('-b', '--minblock', dest='min_block_size', metavar='min_b',
+    argparser.add_argument('-b', '--min-block', dest='min_block_size', metavar='min_b',
                            type=int, default=DEFAULT_PARAMS['min_block_size'],
                            help='min block size   int[2, maxblock], square of 2')
-    argparser.add_argument('-B', '--maxblock', dest='max_block_size', metavar='max_b',
+    argparser.add_argument('-B', '--max-block', dest='max_block_size', metavar='max_b',
                            type=int, default=DEFAULT_PARAMS['max_block_size'],
                            help='max block size   int[minblock, image size], square of 2')
     argparser.add_argument('-q', '--quantization', dest='quant_power', metavar='q',
@@ -35,15 +35,15 @@ def get_qtar_argpaser(with_images=True):
                            help='use permutation mode')
     argparser.add_argument('-c', '--cf', dest='cf_mode', action='store_true',
                            help='use curve-fitting mode')
-    argparser.add_argument('-g', '--cf_grid', dest='cf_grid_size', metavar='cf',
+    argparser.add_argument('-g', '--cf-grid', dest='cf_grid_size', metavar='cf',
                            type=int, default=DEFAULT_PARAMS['cf_grid_size'],
                            help='grid size to align curve fitting   int[1, minblock]')
     argparser.add_argument('-d', '--sidct', dest='wmdct_mode', action='store_true',
                            help='use DCT on secret image - SIDCT mode')
-    argparser.add_argument('--siblock', dest='wmdct_block_size', metavar='v',
+    argparser.add_argument('--si-b', dest='wmdct_block_size', metavar='v',
                            type=int, default=DEFAULT_PARAMS['wmdct_block_size'],
                            help='seret image block size   int[1, si size], square of 2')
-    argparser.add_argument('--sis', dest='wmdct_scale', metavar='sk',
+    argparser.add_argument('--si-s', dest='wmdct_scale', metavar='sk',
                            type=float, default=DEFAULT_PARAMS['wmdct_block_size'],
                            help='scale secret image DCT coefficients before embedding, float(0, 1]')
 

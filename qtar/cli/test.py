@@ -2,7 +2,7 @@ import os
 
 from PIL import Image
 
-from qtar.cli.qtarargparser import get_qtar_argpaser, validate_params
+from qtar.cli.embed import get_embed_argparser
 from qtar.core.container import Key
 from qtar.core.qtar import QtarStego, NoSpaceError
 from qtar.optimization.metrics import psnr, bcr, ssim
@@ -10,7 +10,7 @@ from qtar.utils import benchmark
 from qtar.utils.stamp import stamp_image
 
 STAGES_DIR = "stages\\"
-EMBEDDING_INFO_TEMPLATE = """Embedding {watermark} in {container} using QTAR
+EMBEDDING_INFO_TEMPLATE = """Embedding {secret-image} in {container} using QTAR
 
 QTAR params:
 pm mode:               {pm_mode}
@@ -18,31 +18,23 @@ cf mode:               {cf_mode}
 wmdct mode:            {wmdct_mode}
 threshold:             {homogeneity_threshold}
 min - max block sizes: {min_block_size} - {max_block_size}
-watermark block size:  {wmdct_block_size}
+SI block size:         {wmdct_block_size}
 quantization power:    {quant_power:.2f}
 cf grid size:          {cf_grid_size}
 scale:                 {ch_scale:.2f}
-wmdct scale            {wmdct_scale:.2f}
+SI scale               {wmdct_scale:.2f}
 offset:                {offset}
 """
 METRICS_INFO_TEMPLATE = """
 Metrics:
 PSNR container: {psnr_container:.4f}
 SSIM container: {ssim_container:.4f}
-PSNR watermark: {psnr_wm:.4f}
-SSIM watermark: {ssim_wm:.4f}
-BPP:     {bpp:.4f}
-BCR:     {bcr:.4f}
-WM_SIZE: {width}x{height}"""
-STAMP_TEMPLATE = """pm mode:    {use_permutations}
-threshold:  {homogeneity_threshold}
-block size: {min_block_size}px - {max_block_size}px
-wm block:   {wmdct_block_size}px
-q power:    {quant_power:.2f}
-cf grid:    {cf_grid_size}px
-k:          {ch_scale:.2f}
-offset:     {offset[0]}px {offset[1]}px
-BPP:        {bpp:.4f}
+PSNR SI:        {psnr_wm:.4f}
+SSIM SI:        {ssim_wm:.4f}
+BPP:            {bpp:.4f}
+BCR:            {bcr:.4f}
+SI size:        {width}x{height}"""
+STAMP_TEMPLATE = """BPP:        {bpp:.4f}
 PSNR:       {psnr:.4f}
 SSIM:       {ssim:.4f}"""
 KEY_INFO_TEMPLATE = """  
@@ -55,34 +47,23 @@ pm key size: {key.pm_fix_key_size}
 """
 
 
-def main():
-    argparser = get_qtar_argpaser()
-    argparser.add_argument('-rc', '--container_size', metavar='container_size',
-                           type=int, nargs=2, default=None,
-                           help='resize container image')
-    argparser.add_argument('-rw', '--watermark_size', metavar='watermark_size',
-                           type=int, nargs=2, default=None,
-                           help='resize watermark')
-    argparser.add_argument('-ss', '--save_stages', action='store_true',
+def get_test_params():
+    argparser = get_embed_argparser()
+    argparser.add_argument('--ss', '--save_stages', action='store_true',
                            help='save stages images in "stages" directory')
-    argparser.add_argument('-st', '--stamp_stages', action='store_true',
+    argparser.add_argument('--st', '--stamp_stages', action='store_true',
                            help='stamp info on stages images')
-    argparser.add_argument('-key', '--key', metavar='path',
-                           type=str, default=None,
-                           help='save key to file')
-    args = argparser.parse_args()
-    params = validate_params(vars(args))
 
-    embed(params)
+    return argparser
 
 
-def embed(params):
+def test(params):
     container = Image.open(params['container'])
     if params['container_size']:
         container = container.resize(params['container_size'], Image.BILINEAR)
-    watermark = Image.open(params['watermark'])
-    if params['watermark_size']:
-        watermark = watermark.resize(params['watermark_size'], Image.BILINEAR)
+    watermark = Image.open(params['secret-image'])
+    if params['secret_image_size']:
+        watermark = watermark.resize(params['secret_image_size'], Image.BILINEAR)
 
     embedding_info = EMBEDDING_INFO_TEMPLATE.format(**params)
     print(embedding_info)
@@ -114,7 +95,6 @@ def embed(params):
 
     if 'save_stages' in params and params['save_stages']:
         save_stages(embed_result.stages_imgs, STAMP_TEMPLATE.format(
-            **params,
             psnr=psnr_container,
             ssim=ssim_container,
             bpp=bpp_
@@ -132,12 +112,7 @@ def embed(params):
     extracted_wm = extract_stages_imgs['9-extracted_watermark']
 
     if 'save_stages' in params and params['save_stages']:
-        save_stages(extract_stages_imgs, STAMP_TEMPLATE.format(
-            **params,
-            psnr=psnr_container,
-            ssim=ssim_container,
-            bpp=bpp_
-        ) if params['stamp_stages'] else None)
+        save_stages(extract_stages_imgs)
 
     bcr_wm = bcr(wm, extracted_wm)
     psnr_wm = psnr(wm, extracted_wm)
@@ -172,7 +147,3 @@ def save_stages(stages, stamp_txt=None):
         if stamp_txt is not None:
             img = stamp_image(img, stamp_txt)
         img.save(STAGES_DIR + name + '.bmp')
-
-
-if __name__ == "__main__":
-    main()
