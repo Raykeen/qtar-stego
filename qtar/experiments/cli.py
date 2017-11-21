@@ -2,7 +2,7 @@ import openpyxl
 from openpyxl.utils.dataframe import dataframe_to_rows
 
 from qtar.core.argparser import create_argpaser, validate_params
-from qtar.experiments.compare import qtar_vs_cf_qtar
+from qtar.experiments.compare import qtar_vs_cf_qtar, qtar_vs_decfqtarpmwdct
 from qtar.experiments.efficiency import efficiency
 from qtar.experiments.robustness import robustness
 from qtar.experiments.enumerations import enumerations
@@ -39,6 +39,11 @@ def main():
         xls_path += 'qtar_vs_cfqtar'
 
         table = qtar_vs_cf_qtar(params)
+
+    elif params['experiment'] == 'qtar-vs-decfqtarpmsidct':
+        xls_path += 'qtar_vs_decfqtarpmsidct'
+
+        table = qtar_vs_decfqtarpmwdct(params)
 
     elif params['experiment'] == 'efficiency':
         xls_path += ('pm_' if params['pm_mode'] else '') \

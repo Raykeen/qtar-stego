@@ -36,38 +36,21 @@ def create_argpaser(with_images=True):
     argparser.add_argument('-cf', '--cf_mode', action='store_true',
                            help='use curve-fitting mode')
     argparser.add_argument('-cf_g', '--cf_grid_size', metavar='size',
-                           type=int, default=None,
+                           type=int, default=DEFAULT_PARAMS['cf_grid_size'],
                            help='grid size to align curve fitting   int[1, min_block_size], square of 2')
     argparser.add_argument('-wmdct', '--wmdct_mode', action='store_true',
                            help='use watermark DCT mode')
     argparser.add_argument('-wmdct_b', '--wmdct_block_size', metavar='size',
-                           type=int, default=None,
+                           type=int, default=DEFAULT_PARAMS['wmdct_block_size'],
                            help='watermark block size   int[1, wm_size], square of 2')
     argparser.add_argument('-wmdct_s', '--wmdct_scale', metavar='scale',
-                           type=float, default=None,
+                           type=float, default=DEFAULT_PARAMS['wmdct_scale'],
                            help='scale secret image DCT coefficients before embedding, float(0, 1]')
 
     return argparser
 
 
 def validate_params(params):
-    if params['cf_grid_size']:
-        params['cf_mode'] = True
-    elif params['cf_mode']:
-        params['cf_grid_size'] = DEFAULT_PARAMS['cf_grid_size']
-
-    if params['wmdct_block_size']:
-        params['wmdct_mode'] = True
-
-    if params['wmdct_scale']:
-        params['wmdct_mode'] = True
-
-    if params['wmdct_mode'] and params['wmdct_block_size'] is None:
-        params['wmdct_block_size'] = DEFAULT_PARAMS['wmdct_block_size']
-
-    if params['wmdct_mode'] and params['wmdct_scale'] is None:
-        params['wmdct_scale'] = DEFAULT_PARAMS['wmdct_scale']
-
     valid_params = copy(DEFAULT_PARAMS)
     valid_params.update(params)
     return valid_params
