@@ -1,6 +1,0 @@
-clouds_g.png mandril_g.png
-house_g.png mandril_g.png
-jellyfish.png mandril_g.png
-F15_g.png mandril_g.png
-jetplane_g.png mandril_g.png
-walkbridge_g.png mandril_g.png

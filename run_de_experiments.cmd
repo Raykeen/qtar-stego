@@ -1,7 +1,7 @@
 @ECHO OFF
 setlocal enabledelayedexpansion
 
-for /F "tokens=1,2*" %%i in (experiments\de_experiments.txt) do (
+for /F "tokens=1,2*" %%i in (experiments\experiments.txt) do (
     set _params=%*
     set _short=!_params: =%!
     set _short=!_short:-= %!
