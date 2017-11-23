@@ -22,7 +22,7 @@ def main():
     argparser.add_argument('-exp', '--experiments_path', metavar='path',
                            type=str, default='experiments/experiments.txt',
                            help='path to list with experiments')
-    argparser.add_argument('-p', '--param', metavar='name',
+    argparser.add_argument('-P', '--param', metavar='name',
                            type=str, default='quant_power',
                            help='one of: ' + ", ".join(PARAMS_NAMES.keys()))
 
