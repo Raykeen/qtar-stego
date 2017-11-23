@@ -3,7 +3,7 @@ from PIL import Image
 
 from qtar.core.qtar import QtarStego
 from qtar.core.container import Key
-from qtar.utils import benchmark, extract_filename
+from qtar.utils import benchmark, extract_filename, save_file
 
 
 def get_extract_argparser():
@@ -33,4 +33,4 @@ def extract(params):
         stego_image_file_name = extract_filename(params['stego'])
         si_path = 'extracted_from_%s.png' % stego_image_file_name
 
-    secret_image.save(si_path)
+    save_file(secret_image, si_path)

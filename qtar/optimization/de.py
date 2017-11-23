@@ -31,7 +31,7 @@ def main():
     argparser.add_argument('issue', type=int, default=0,
                            help='0: Run all optimizations\n' + '\n'.join(issue_descriptions))
     argparser.add_argument('-xls', '--xls_path', metavar='path',
-                           type=str, default=None,
+                           type=str, default=DE_RESULT_XLS,
                            help='save results to xls file')
     argparser.add_argument('-rc', '--container_size', metavar='container_size',
                            type=int, nargs=2, default=None,
@@ -95,7 +95,7 @@ def run_de(params, Issue):
     if params['xls_path']:
         while True:
             try:
-                save_de_results(DE_RESULT_XLS, def_params, new_params, def_metrics, new_metrics)
+                save_de_results(params['xls_path'], def_params, new_params, def_metrics, new_metrics)
                 break
             except PermissionError:
                 print('Cant save results. Please close %s' % DE_RESULT_XLS, file=sys.stderr)

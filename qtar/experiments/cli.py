@@ -1,3 +1,5 @@
+import os
+
 from qtar.cli.qtarargparser import get_qtar_argpaser, validate_params
 from qtar.experiments import PARAMS_NAMES
 from qtar.experiments.compare import qtar_vs_cf_qtar
@@ -65,6 +67,8 @@ def main():
 
     print(table)
 
+    os.makedirs(os.path.dirname(xls_path), exist_ok=True)
+
     while True:
         try:
             table.to_excel(xls_path, sheet_name=params['xls_sheet'])
@@ -73,3 +77,6 @@ def main():
             print('Cant save results. Please close %s' % params['xls_path'])
             input()
             continue
+
+if __name__ == "__main__":
+    main()

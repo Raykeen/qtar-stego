@@ -1,6 +1,8 @@
 import openpyxl
 from openpyxl.utils import (get_column_letter)
 
+from qtar.utils import save_file
+
 first_col = 1
 first_row = 1
 
@@ -45,7 +47,8 @@ def save_de_results(file, def_params, new_params, def_metrics, new_metrics):
 
     values = (*def_params["values"], *def_metrics["values"], *new_params["values"], *new_metrics["values"])
     past_list_in_row(sheet, first_col, row, values)
-    workbook.save(file)
+
+    save_file(workbook, file)
 
 
 def cell(col, row):

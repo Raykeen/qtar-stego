@@ -2,7 +2,7 @@ from PIL import Image
 
 from qtar.core.qtar import QtarStego, NoSpaceError
 from qtar.optimization.metrics import psnr, ssim
-from qtar.utils import benchmark, extract_filename
+from qtar.utils import benchmark, extract_filename, save_file
 from qtar.cli.qtarargparser import get_qtar_argpaser
 
 METRICS_INFO_TEMPLATE = """
@@ -54,8 +54,8 @@ def embed(params):
     else:
         stego_path = params['stego']
 
-    stego.save(stego_path)
-    key.save(params['key'])
+    save_file(stego, stego_path)
+    save_file(key, params['key'])
 
     bpp_ = embed_result.bpp
     psnr_container = psnr(container, stego)

@@ -44,7 +44,7 @@ def get_qtar_argpaser(with_images=True):
                            type=int, default=DEFAULT_PARAMS['wmdct_block_size'],
                            help='seret image block size   int[1, si size], square of 2')
     argparser.add_argument('--si-s', dest='wmdct_scale', metavar='sk',
-                           type=float, default=DEFAULT_PARAMS['wmdct_block_size'],
+                           type=float, default=DEFAULT_PARAMS['wmdct_scale'],
                            help='scale secret image DCT coefficients before embedding, float(0, 1]')
 
     return argparser

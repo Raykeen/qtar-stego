@@ -6,7 +6,7 @@ from qtar.cli.embed import get_embed_argparser
 from qtar.core.container import Key
 from qtar.core.qtar import QtarStego, NoSpaceError
 from qtar.optimization.metrics import psnr, bcr, ssim
-from qtar.utils import benchmark
+from qtar.utils import benchmark, save_file
 from qtar.utils.stamp import stamp_image
 
 STAGES_DIR = "stages\\"
@@ -93,15 +93,15 @@ def test(params):
     psnr_container = psnr(container, stego)
     ssim_container = ssim(container, stego)
 
-    if 'save_stages' in params and params['save_stages']:
+    if 'ss' in params and params['ss']:
         save_stages(embed_result.stages_imgs, STAMP_TEMPLATE.format(
             psnr=psnr_container,
             ssim=ssim_container,
             bpp=bpp_
-        ) if params['stamp_stages'] else None)
+        ) if params['st'] else None)
 
     if 'key' in params and params['key']:
-        key.save(params['key'])
+        save_file(key, params['key'])
         key = Key.open(params['key'])
 
     key_info = KEY_INFO_TEMPLATE.format(key=key)
@@ -111,7 +111,7 @@ def test(params):
         extract_stages_imgs = qtar.extract(stego, key, stages=True)
     extracted_wm = extract_stages_imgs['9-extracted_watermark']
 
-    if 'save_stages' in params and params['save_stages']:
+    if 'ss' in params and params['ss']:
         save_stages(extract_stages_imgs)
 
     bcr_wm = bcr(wm, extracted_wm)
@@ -142,8 +142,6 @@ def test(params):
 
 def save_stages(stages, stamp_txt=None):
     for name, img in stages.items():
-        if not os.path.exists(STAGES_DIR):
-            os.makedirs(STAGES_DIR)
         if stamp_txt is not None:
             img = stamp_image(img, stamp_txt)
-        img.save(STAGES_DIR + name + '.bmp')
+        save_file(img, STAGES_DIR + name + '.bmp')
