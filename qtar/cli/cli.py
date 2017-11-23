@@ -32,16 +32,19 @@ def main():
         argparser.print_help()
         return
 
-    if args.command == 'embed':
-        params = validate_params(vars(args))
-        embed(params)
+    try:
+        if args.command == 'embed':
+            params = validate_params(vars(args))
+            embed(params)
 
-    elif args.command == 'extract':
-        extract(vars(args))
+        elif args.command == 'extract':
+            extract(vars(args))
 
-    elif args.command == 'test':
-        params = validate_params(vars(args))
-        test(params)
+        elif args.command == 'test':
+            params = validate_params(vars(args))
+            test(params)
+    except Exception as e:
+        print(e)
 
 
 if __name__ == "__main__":
