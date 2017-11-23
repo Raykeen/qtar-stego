@@ -10,22 +10,37 @@ from qtar.experiments.robustness import robustness
 
 def main():
     argparser = get_qtar_argpaser(False)
-    argparser.add_argument('experiment', type=str,
+    argparser.add_argument('experiment',
+                           type=str,
+                           choices=['efficiency', 'qtar-vs-cfqtar', 'robustness', 'enumerations'],
                            help='one of the experiments: efficiency, qtar-vs-cfqtar, robustness, enumerations')
-    argparser.add_argument('-rc', '--container_size', metavar='container_size',
-                           type=int, nargs=2, default=None,
-                           help='resize container image')
-    argparser.add_argument('-rw', '--watermark_size', metavar='watermark_size',
-                           type=int, nargs=2, default=None,
-                           help='resize watermark')
-    argparser.add_argument('-sheet', '--xls_sheet', metavar='name',
-                           type=str, default='enum',
-                           help='sheet name of xlsx file')
-    argparser.add_argument('-exp', '--experiments_path', metavar='path',
-                           type=str, default='experiments/experiments.txt',
+
+    argparser.add_argument('-r', '--rc',
+                           dest='container_size',
+                           metavar='CONTAINER_SIZE',
+                           type=int,
+                           nargs=2,
+                           default=None,
+                           help='Resize container image.')
+
+    argparser.add_argument('-R', '--rsi',
+                           dest='watermark_size',
+                           metavar='SECRET_IMAGE_SIZE',
+                           type=int,
+                           nargs=2,
+                           default=None,
+                           help='Resize secret image.')
+
+    argparser.add_argument('-e', '--experiments',
+                           metavar='EXPERIMENTS_PATH',
+                           type=str,
+                           default='experiments/experiments.txt',
                            help='path to list with experiments')
-    argparser.add_argument('-P', '--param', metavar='name',
-                           type=str, default='quant_power',
+
+    argparser.add_argument('-P', '--param',
+                           metavar='PARAM_TO_ENUMERATE',
+                           type=str,
+                           default='quant_power',
                            help='one of: ' + ", ".join(PARAMS_NAMES.keys()))
 
     args = argparser.parse_args()
@@ -71,12 +86,13 @@ def main():
 
     while True:
         try:
-            table.to_excel(xls_path, sheet_name=params['xls_sheet'])
+            table.to_excel(xls_path, sheet_name='enum')
             break
         except PermissionError:
             print('Cant save results. Please close %s' % params['xls_path'])
             input()
             continue
+
 
 if __name__ == "__main__":
     main()

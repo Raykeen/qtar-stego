@@ -49,10 +49,13 @@ pm key size: {key.pm_fix_key_size}
 
 def get_test_params():
     argparser = get_embed_argparser()
-    argparser.add_argument('--ss', '--save_stages', action='store_true',
-                           help='save stages images in "stages" directory')
-    argparser.add_argument('--st', '--stamp_stages', action='store_true',
-                           help='stamp info on stages images')
+    argparser.add_argument('--ss', '--save_stages',
+                           action='store_true',
+                           help='Save stages images in "stages" directory.')
+
+    argparser.add_argument('--st', '--stamp_stages',
+                           action='store_true',
+                           help='Stamp info on stages images.')
 
     return argparser
 
@@ -61,9 +64,9 @@ def test(params):
     container = Image.open(params['container'])
     if params['container_size']:
         container = container.resize(params['container_size'], Image.BILINEAR)
-    watermark = Image.open(params['secret-image'])
-    if params['secret_image_size']:
-        watermark = watermark.resize(params['secret_image_size'], Image.BILINEAR)
+    watermark = Image.open(params['watermark'])
+    if params['watermark_size']:
+        watermark = watermark.resize(params['watermark_size'], Image.BILINEAR)
 
     embedding_info = EMBEDDING_INFO_TEMPLATE.format(**params)
     print(embedding_info)

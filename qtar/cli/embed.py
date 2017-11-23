@@ -14,18 +14,35 @@ key size:       {key.size} """
 
 def get_embed_argparser():
     argparser = get_qtar_argpaser()
-    argparser.add_argument('-r', '--container-size', metavar='container size',
-                           type=int, nargs=2, default=None,
-                           help='resize container image')
-    argparser.add_argument('-R', '--secret-image-size', metavar='secret-image size',
-                           type=int, nargs=2, default=None,
-                           help='resize secret image')
-    argparser.add_argument('-S', '--stego', metavar='stego path',
-                           type=str, default=None,
-                           help='path to save stego image')
-    argparser.add_argument('-k', '--key', metavar='key path',
-                           type=str, default='key.qtarkey',
-                           help='path to save key')
+    argparser.add_argument('-r', '--rc',
+                           dest='container_size',
+                           metavar='CONTAINER_SIZE',
+                           type=int,
+                           nargs=2,
+                           default=None,
+                           help='Resize container image.')
+
+    argparser.add_argument('-R', '--rsi',
+                           dest='watermark_size',
+                           metavar='SECRET_IMAGE_SIZE',
+                           type=int,
+                           nargs=2,
+                           default=None,
+                           help='Resize secret image.')
+
+    argparser.add_argument('-S',
+                           '--stego',
+                           metavar='STEGO_IMAGE',
+                           type=str,
+                           default=None,
+                           help='Path to save stego image.')
+
+    argparser.add_argument('-k', '--key',
+                           metavar='KEY_FILE',
+                           type=str,
+                           default='key.qtarkey',
+                           help='Path to save key.')
+
     return argparser
 
 
@@ -33,9 +50,9 @@ def embed(params):
     container = Image.open(params['container'])
     if params['container_size']:
         container = container.resize(params['container_size'], Image.BILINEAR)
-    watermark = Image.open(params['secret-image'])
-    if params['secret_image_size']:
-        watermark = watermark.resize(params['secret_image_size'], Image.BILINEAR)
+    watermark = Image.open(params['watermark'])
+    if params['watermark_size']:
+        watermark = watermark.resize(params['watermark_size'], Image.BILINEAR)
 
     qtar = QtarStego.from_dict(params)
 

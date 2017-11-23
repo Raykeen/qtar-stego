@@ -5,7 +5,8 @@ from PIL import Image
 from scipy.optimize import differential_evolution
 
 from qtar.cli.test import test
-from qtar.cli.qtarargparser import get_qtar_argpaser, validate_params
+from qtar.cli.embed import get_embed_argparser
+from qtar.cli.qtarargparser import validate_params
 from qtar.optimization.deissues import ISSUES
 from qtar.utils import benchmark, print_progress_bar
 from qtar.utils.xlsx import save_de_results
@@ -27,18 +28,18 @@ Optimization issue:
 def main():
     issue_descriptions = ['%d: %s' % (i+1, Issue.desc) for i, Issue in enumerate(ISSUES)]
 
-    argparser = get_qtar_argpaser()
-    argparser.add_argument('issue', type=int, default=0,
+    argparser = get_embed_argparser()
+    argparser.add_argument('issue',
+                           type=int,
+                           default=0,
                            help='0: Run all optimizations\n' + '\n'.join(issue_descriptions))
-    argparser.add_argument('-xls', '--xls_path', metavar='path',
-                           type=str, default=DE_RESULT_XLS,
-                           help='save results to xls file')
-    argparser.add_argument('-rc', '--container_size', metavar='container_size',
-                           type=int, nargs=2, default=None,
-                           help='resize container image')
-    argparser.add_argument('-rw', '--watermark_size', metavar='watermark_size',
-                           type=int, nargs=2, default=None,
-                           help='resize watermark')
+
+    argparser.add_argument('-x', '--xls',
+                           metavar='EXCEL_FILE',
+                           type=str,
+                           default=DE_RESULT_XLS,
+                           help='Save results to xls file.')
+
     args = argparser.parse_args()
 
     params = validate_params(vars(args))
@@ -57,6 +58,7 @@ def run_de(params, Issue):
     watermark = Image.open(params['watermark'])
     if params['watermark_size']:
         watermark = watermark.resize((params['watermark_size'][0], params['watermark_size'][1]), Image.BILINEAR)
+
     params['save_stages'] = False
     params['key'] = None
     print('Embedding with default params:')
