@@ -116,7 +116,9 @@ def prepare_params(params):
     if "container bpp" in params:
         headers.append("BPP")
         values.append(params["container bpp"])
-
+    if "key size" in params:
+        headers.append("Размер ключа, байт")
+        values.append(params["key size"])
     return {
         "headers": headers,
         "values": values
