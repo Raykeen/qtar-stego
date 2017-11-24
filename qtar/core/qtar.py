@@ -27,7 +27,7 @@ DEFAULT_PARAMS = {
     'cf_mode':               False,
     'cf_grid_size':          8,
     'wmdct_mode':            False,
-    'wmdct_block_size':      16,
+    'wmdct_block_size':      32,
     'wmdct_scale':           0.1,
 }
 
