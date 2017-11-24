@@ -81,7 +81,7 @@ def get_param_range(params):
         'min_block_size': map(lambda x: 2**x, range(3, int(math.log2(max_b)) + 1)),
         'max_block_size': map(lambda x: 2**x, range(int(math.log2(min_b)), int(math.log2(max_b)) + 1)),
         'quant_power': np.arange(0.1, 1, 0.01),
-        'cf_grid_size': map(lambda x: 2**x, range(0, int(math.log2(min_b)) + 1)),
+        'cf_grid_size': range(1, min_b + 1),
         'ch_scale': np.arange(0.1, 20, 0.1),
         'offset': product(range(0, container_size[0], 1), range(0, container_size[1])),
         'wmdct_scale': np.arange(0.01, 1.01, 0.01),

@@ -32,6 +32,7 @@ def main():
                            help='Resize secret image.')
 
     argparser.add_argument('-e', '--experiments',
+                           dest='experiments_path',
                            metavar='EXPERIMENTS_PATH',
                            type=str,
                            default='experiments/experiments.txt',
