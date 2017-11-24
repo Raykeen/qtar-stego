@@ -84,7 +84,8 @@ def test(params):
         "watermark psnr": 0,
         "watermark ssim": 0,
         "watermark bcr": 0,
-        "container bpp": 0
+        "container bpp": 0,
+        "key size":      0
     }
 
     container = embed_result.img_container
@@ -139,7 +140,8 @@ def test(params):
         "watermark psnr": psnr_wm,
         "watermark ssim": ssim_wm,
         "watermark bcr": bcr_wm,
-        "container bpp": bpp_
+        "container bpp": bpp_,
+        "key size": key.size
     }
 
 

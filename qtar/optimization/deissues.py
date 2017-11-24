@@ -511,13 +511,13 @@ class OptIssue10(OptIssueBase):
 class OptIssue11(OptIssueBase):
     desc = 'Issue 11\n' \
            'func: -((psnr_c - def_psnr_c) / def_psnr_c + (bpp - def_bpp) / def_bpp + (psnr_w - def_psnr_w) / def_psnr_w)\n' \
-           'params: th1, th2, th3, cf, wm_b'
-    bounds = ((0.1, 1), (0.1, 1), (0.1, 1), (0, 4), (3, 10))
+           'params: th1, th2, th3, min_b, cf_g, wmdct_b'
+    bounds = ((0.1, 1), (0.1, 1), (0.1, 1), (3, 10), (1, 9), (3, 10))
 
-    np = 17
-    cr = 0.6301
-    f = 0.7122
-    evaluations = 1000
+    np = 28
+    cr = 0.9426
+    f = 0.6607
+    evaluations = 2000
 
     best_one = 0
 
@@ -529,8 +529,9 @@ class OptIssue11(OptIssueBase):
 
         new_params = {
             'homogeneity_threshold': (args[0], args[1], args[2]),
-            'cf_grid_size': 2 ** int(args[3]),
-            'wmdct_block_size': 2 ** int(args[4])
+            'min_block_size': 2 ** int(args[3]),
+            'cf_grid_size': int(args[4]),
+            'wmdct_block_size': 2 ** int(args[5])
         }
 
         params = copy(params)
@@ -566,14 +567,16 @@ class OptIssue11(OptIssueBase):
         if result.fun == 0:
             return {
                 'homogeneity_threshold': def_params['homogeneity_threshold'],
+                'min_block_size': def_params['min_block_size'],
                 'cf_grid_size': def_params['cf_grid_size'],
                 'wmdct_block_size': def_params['wmdct_block_size']
             }
 
         return {
             'homogeneity_threshold': (result.x[0], result.x[1], result.x[2]),
-            'cf_grid_size': 2 ** int(result.x[3]),
-            'wmdct_block_size': 2 ** int(result.x[4])
+            'min_block_size': 2 ** int(result.x[3]),
+            'cf_grid_size': int(result.x[4]),
+            'wmdct_block_size': 2 ** int(result.x[5])
         }
 
 
@@ -637,5 +640,80 @@ class OptIssue12(OptIssueBase):
         }
 
 
+class OptIssue13(OptIssueBase):
+    desc = 'Issue 13\n' \
+           'func: -((psnr_c - def_psnr_c) / def_psnr_c + (bpp - def_bpp) / def_bpp + (psnr_w - def_psnr_w) / def_psnr_w)\n' \
+           'params: th1, th2, th3, min_b, cf_g, wmdct_b, x, y'
+    bounds = ((0.1, 1), (0.1, 1), (0.1, 1), (3, 10), (1, 9), (3, 10), (0, 512), (0, 512))
+
+    np = 18
+    cr = 0.5026
+    f = 0.6714
+    evaluations = 20000
+
+    best_one = 0
+
+    @classmethod
+    def func(cls, args, container, watermark, params, default_metrics, callback):
+        def_psnr_c = default_metrics['container psnr']
+        def_psnr_w = default_metrics['watermark psnr']
+        def_bpp = default_metrics['container bpp']
+
+        new_params = {
+            'homogeneity_threshold': (args[0], args[1], args[2]),
+            'min_block_size': 2 ** int(args[3]),
+            'cf_grid_size': int(args[4]),
+            'wmdct_block_size': 2 ** int(args[5]),
+            'offset': (int(args[6]), int(args[7]))
+        }
+
+        params = copy(params)
+        params.update(new_params)
+
+        qtar = QtarStego.from_dict(params)
+
+        try:
+            embed_result = qtar.embed(container, watermark)
+            wm_extracted = qtar.extract(embed_result.img_stego, embed_result.key)
+        except Exception as e:
+            cls.eval_callback(callback, error=e, new_params=new_params, f=cls.best_one)
+            return 0
+
+        psnr_c = psnr(embed_result.img_container, embed_result.img_stego)
+        psnr_w = psnr(embed_result.img_watermark, wm_extracted)
+        bpp_ = embed_result.bpp
+
+        func = -((psnr_c - def_psnr_c) / def_psnr_c + (bpp_ - def_bpp) / def_bpp + (psnr_w - def_psnr_w) / def_psnr_w)
+
+        if psnr_c < def_psnr_c or bpp_ < def_bpp or psnr_w < def_psnr_w:
+            func = 0
+
+        if func < cls.best_one:
+            cls.best_one = func
+
+        cls.eval_callback(callback, f=cls.best_one)
+
+        return func
+
+    @staticmethod
+    def get_new_params(result, def_params):
+        if result.fun == 0:
+            return {
+                'homogeneity_threshold': def_params['homogeneity_threshold'],
+                'min_block_size': def_params['min_block_size'],
+                'cf_grid_size': def_params['cf_grid_size'],
+                'wmdct_block_size': def_params['wmdct_block_size'],
+                'offset': def_params['offset']
+            }
+
+        return {
+            'homogeneity_threshold': (result.x[0], result.x[1], result.x[2]),
+            'min_block_size': 2 ** int(result.x[3]),
+            'cf_grid_size': int(result.x[4]),
+            'wmdct_block_size': 2 ** int(result.x[5]),
+            'offset': (int(result.x[6]), int(result.x[7]))
+        }
+
+
 ISSUES = [OptIssue1, OptIssue2, OptIssue3, OptIssue4, OptIssue5, OptIssue6, OptIssue7, OptIssue8, OptIssue9,
-          OptIssue10, OptIssue11, OptIssue12]
+          OptIssue10, OptIssue11, OptIssue12, OptIssue13]
