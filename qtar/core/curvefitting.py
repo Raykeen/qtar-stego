@@ -118,9 +118,9 @@ def fit_cfregions(dct_regions, q_power, grid_size):
         quantization_matrix = generate_quantization_matrix(size)
         quantized = np.uint8(region / (quantization_matrix * q_power))
         nonzero_y_indices, nonzero_x_indices = np.nonzero(quantized)
-        significant_area_width = nonzero_x_indices.max()
-        significant_area_height = nonzero_y_indices.max()
         try:
+            significant_area_width = nonzero_x_indices.max()
+            significant_area_height = nonzero_y_indices.max()
             significant_area_diagonal = max(x for x, y in zip(nonzero_x_indices, nonzero_y_indices) if x == y)
 
             curves.append((
@@ -129,7 +129,7 @@ def fit_cfregions(dct_regions, q_power, grid_size):
                 math.ceil((significant_area_width + 1) / grid_size)
             ))
         except ValueError:
-            curves.append((height / grid_size, height / grid_size, width / grid_size))
+            curves.append((grid_size, grid_size, grid_size))
 
     return CFRegions.from_regions(dct_regions, curves, grid_size)
 

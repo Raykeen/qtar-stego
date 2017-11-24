@@ -2,7 +2,7 @@ import os
 
 from qtar.cli.qtarargparser import get_qtar_argpaser, validate_params
 from qtar.experiments import PARAMS_NAMES
-from qtar.experiments.compare import qtar_vs_cf_qtar, qtar_vs_decfqtarpmwdct
+from qtar.experiments.compare import qtar_vs_cf_qtar, qtar_vs_decfqtarpmwdct, cfqtar_vs_decfqtarpmwdct
 from qtar.experiments.efficiency import efficiency
 from qtar.experiments.enumerations import enumerations
 from qtar.experiments.robustness import robustness
@@ -12,7 +12,14 @@ def main():
     argparser = get_qtar_argpaser(False)
     argparser.add_argument('experiment',
                            type=str,
-                           choices=['efficiency', 'qtar-vs-cfqtar', 'robustness', 'enumerations'],
+                           choices=[
+                               'efficiency',
+                               'qtar-vs-cfqtar',
+                               'qtar-vs-decfqtarpmsidct',
+                               'cfqtar-vs-decfqtarpmsidct',
+                               'robustness',
+                               'enumerations',
+                           ],
                            help='one of the experiments: efficiency, qtar-vs-cfqtar, robustness, enumerations')
 
     argparser.add_argument('-r', '--rc',
@@ -60,6 +67,11 @@ def main():
 
         table = qtar_vs_decfqtarpmwdct(params)
 
+    elif params['experiment'] == 'cfqtar-vs-decfqtarpmsidct':
+        xls_path += 'cfqtar_vs_decfqtarpmsidct'
+
+        table = cfqtar_vs_decfqtarpmwdct(params)
+
     elif params['experiment'] == 'efficiency':
         xls_path += ('pm_' if params['pm_mode'] else '') \
                     + ('cf_' if params['cf_mode'] else '') \
@@ -95,7 +107,7 @@ def main():
             table.to_excel(xls_path, sheet_name='enum')
             break
         except PermissionError:
-            print('Cant save results. Please close %s' % params['xls_path'])
+            print('Cant save results. Please close %s' % xls_path)
             input()
             continue
 
