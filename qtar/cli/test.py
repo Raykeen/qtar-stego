@@ -10,7 +10,7 @@ from qtar.utils import benchmark, save_file
 from qtar.utils.stamp import stamp_image
 
 STAGES_DIR = "stages\\"
-EMBEDDING_INFO_TEMPLATE = """Embedding {secret-image} in {container} using QTAR
+EMBEDDING_INFO_TEMPLATE = """Embedding {watermark} in {container} using QTAR
 
 QTAR params:
 pm mode:               {pm_mode}

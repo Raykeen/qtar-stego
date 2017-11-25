@@ -14,8 +14,8 @@ def get_qtar_argpaser(with_images=True):
                                type=str,
                                help='stego-container image')
 
-        argparser.add_argument('secret-image',
-                               dest='watermark',
+        argparser.add_argument('watermark',
+                               metavar='secret-image',
                                type=str,
                                help='secret image to embed into container')
 
