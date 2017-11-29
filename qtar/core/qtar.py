@@ -160,9 +160,9 @@ class QtarStego:
                 "2-quad_tree": self.__regions_to_image(chs_regions, container_image_mode,
                                                        borders=True, only_right_bottom=True),
                 "3-adaptive_regions": self.__regions_to_image(container.chs_regions_dct_embed, container_image_mode,
-                                                              factor=10),
+                                                              borders=True, factor=20),
                 "4-dct": self.__regions_to_image(chs_embedded_dct_regions, container_image_mode,
-                                                 factor=10),
+                                                 factor=20),
                 "5-watermark": img_watermark,
                 "6-stego_image": img_stego
             }
