@@ -71,7 +71,7 @@ def test(params):
     embedding_info = EMBEDDING_INFO_TEMPLATE.format(**params)
     print(embedding_info)
 
-    qtar = QtarStego.from_dict(params)
+    qtar = QtarStego(**params)
 
     try:
         with benchmark("embedded in "):

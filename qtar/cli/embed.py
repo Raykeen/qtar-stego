@@ -54,7 +54,7 @@ def embed(params):
     if params['watermark_size']:
         watermark = watermark.resize(params['watermark_size'], Image.BILINEAR)
 
-    qtar = QtarStego.from_dict(params)
+    qtar = QtarStego(**params)
 
     try:
         with benchmark("Embedded in "):

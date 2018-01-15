@@ -394,23 +394,6 @@ class QtarStego:
             'wmdct_scale': self.wmdct_scale
         }
 
-    @staticmethod
-    def from_dict(params):
-        return QtarStego(
-            params['homogeneity_threshold'],
-            params['min_block_size'],
-            params['max_block_size'],
-            params['quant_power'],
-            params['ch_scale'],
-            params['offset'],
-            params['pm_mode'],
-            params['cf_mode'],
-            params['cf_grid_size'],
-            params['wmdct_mode'],
-            params['wmdct_block_size'],
-            params['wmdct_scale']
-        )
-
 
 class StegoEmbedResult:
     def __init__(self, img_stego, key, bpp, img_container=None, img_watermark=None, stages_imgs=None):
