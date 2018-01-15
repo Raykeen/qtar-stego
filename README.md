@@ -1,19 +1,19 @@
-#QTAR Stego
+# QTAR Stego
 Steganography utility for embedding/extracting secret images into another images using high-capacity QTAR algorithm and its modifications.
 
-##Install
+## Install
 ```
 python setup.py build
 python setup.py install
 ```
 
-##Usage
+## Usage
 ```
 qtar embed [container-image] [secret-image]
 qtar extract [container-image] [key-file]
 ```
 
-##Related papers
+## Related papers
 [Rabie T. Toward optimal embedding capacity for transform domain steganography: a quad-tree adaptive-region approach / T. Rabie, I. Kamel // Multimedia Tools and Applications. – 2016. – doi:10.1007/s11042-016-3501-4.](https://link.springer.com/article/10.1007/s11042-016-3501-4)
 
 [Rabie T. Maximizing embedding capacity and stego quality: curve-fitting in the transform domain / T. Rabie, I. Kamel, M. Baziyad // Multimedia Tools and Applications. – 2017. – doi:10.1007/s11042-017-4727-5.](https://link.springer.com/article/10.1007%2Fs11042-017-4727-5)
