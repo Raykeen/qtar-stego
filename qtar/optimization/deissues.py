@@ -583,13 +583,15 @@ class OptIssue11(OptIssueBase):
 class OptIssue12(OptIssueBase):
     desc = 'Issue 12\n' \
            'func: -((psnr_c - def_psnr_c) / def_psnr_c + (bpp - def_bpp) / def_bpp + (psnr_w - def_psnr_w) / def_psnr_w)\n' \
-           'params: threshold for 3 brightness levels, min_b'
-    bounds = ((0, 1), (0, 1), (0, 1), (3, 10))
+           'params: threshold for 3 brightness levels, min_b, offset'
+    bounds = ((0, 1), (0, 1), (0, 1), (3, 10), (0, 512), (0, 512))
 
-    np = 20
-    cr = 0.6938
-    f = 0.9314
-    evaluations = 10020
+    np = 18
+    cr = 0.5026
+    f = 0.6714
+    evaluations = 20000
+
+    best_one = 0
 
     @classmethod
     def func(cls, args, container, watermark, params, default_metrics, callback):
@@ -600,7 +602,8 @@ class OptIssue12(OptIssueBase):
         params = copy(params)
         new_params = {
             'homogeneity_threshold': (args[0], args[1], args[2]),
-            'min_block_size': 2 ** int(args[3])
+            'min_block_size': 2 ** int(args[3]),
+            'offset': (int(args[4]), int(args[5]))
         }
 
         params.update(new_params)
@@ -611,10 +614,8 @@ class OptIssue12(OptIssueBase):
             embed_result = qtar.embed(container, watermark)
             wm_extracted = qtar.extract(embed_result.img_stego, embed_result.key)
         except Exception as e:
-            cls.eval_callback(callback, error=e, new_params=new_params)
+            cls.eval_callback(callback, error=e, new_params=new_params, f=cls.best_one)
             return 0
-
-        cls.eval_callback(callback)
 
         psnr_c = psnr(embed_result.img_container, embed_result.img_stego)
         psnr_w = psnr(embed_result.img_watermark, wm_extracted)
@@ -623,7 +624,12 @@ class OptIssue12(OptIssueBase):
         func = -((psnr_c - def_psnr_c) / def_psnr_c + (bpp_ - def_bpp) / def_bpp + (psnr_w - def_psnr_w) / def_psnr_w)
 
         if psnr_c < def_psnr_c or bpp_ < def_bpp or psnr_w < def_psnr_w:
-            return 0
+            func = 0
+
+        if func < cls.best_one:
+            cls.best_one = func
+
+        cls.eval_callback(callback, f=cls.best_one)
 
         return func
 
@@ -632,11 +638,13 @@ class OptIssue12(OptIssueBase):
         if result.fun == 0:
             return {
                 'homogeneity_threshold': def_params['homogeneity_threshold'],
-                'min_block_size': def_params['min_block_size']
+                'min_block_size': def_params['min_block_size'],
+                'offset': def_params['offset']
             }
         return {
             'homogeneity_threshold': (result.x[0], result.x[1], result.x[2]),
-            'min_block_size': 2 ** int(result.x[3])
+            'min_block_size': 2 ** int(result.x[3]),
+            'offset': (int(result.x[4]), int(result.x[5]))
         }
 
 
