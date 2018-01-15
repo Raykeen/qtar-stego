@@ -24,6 +24,7 @@ def efficiency(params):
         params_to_show.append('cf_grid_size')
     if params['wmdct_mode']:
         params_to_show.append('wmdct_block_size')
+        params_to_show.append('wmdct_scale')
 
     params_names = []
 

@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from timeit import default_timer as timer
-import ntpath
+import os
 
 
 class benchmark(object):
@@ -20,7 +20,7 @@ class benchmark(object):
 
 
 def extract_filename(path):
-    return ntpath.basename(path).split(".")[0]
+    return os.path.basename(path).split(".")[0]
 
 
 def print_progress_bar(iteration, total, time, prefix='', suffix='', decimals=1, **kwargs):
@@ -104,3 +104,10 @@ def flatten(lst):
         else:
             flat_list.append(item)
     return flat_list
+
+
+def save_file(file, path, *args, **kwargs):
+    dir_name = os.path.dirname(path)
+    if dir_name:
+        os.makedirs(dir_name, exist_ok=True)
+    file.save(path, *args, **kwargs)

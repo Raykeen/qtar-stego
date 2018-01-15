@@ -12,7 +12,7 @@ def embed(params, filter_=None):
     if 'watermark_size' in params and params['watermark_size']:
         watermark = watermark.resize(params['watermark_size'], Image.BILINEAR)
 
-    qtar = QtarStego.from_dict(params)
+    qtar = QtarStego(**params)
 
     embed_result = qtar.embed(container, watermark)
 

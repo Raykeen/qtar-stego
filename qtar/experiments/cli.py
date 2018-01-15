@@ -1,32 +1,54 @@
-import openpyxl
-from openpyxl.utils.dataframe import dataframe_to_rows
+import os
 
-from qtar.core.argparser import create_argpaser, validate_params
-from qtar.experiments.compare import qtar_vs_cf_qtar, qtar_vs_decfqtarpmwdct
-from qtar.experiments.efficiency import efficiency
-from qtar.experiments.robustness import robustness
-from qtar.experiments.enumerations import enumerations
+from qtar.cli.qtarargparser import get_qtar_argpaser, validate_params
 from qtar.experiments import PARAMS_NAMES
+from qtar.experiments.compare import qtar_vs_cf_qtar, qtar_vs_decfqtarpmwdct, cfqtar_vs_decfqtarpmwdct
+from qtar.experiments.efficiency import efficiency
+from qtar.experiments.enumerations import enumerations
+from qtar.experiments.robustness import robustness
 
 
 def main():
-    argparser = create_argpaser(False)
-    argparser.add_argument('experiment', type=str,
+    argparser = get_qtar_argpaser(False)
+    argparser.add_argument('experiment',
+                           type=str,
+                           choices=[
+                               'efficiency',
+                               'qtar-vs-cfqtar',
+                               'qtar-vs-decfqtarpmsidct',
+                               'cfqtar-vs-decfqtarpmsidct',
+                               'robustness',
+                               'enumerations',
+                           ],
                            help='one of the experiments: efficiency, qtar-vs-cfqtar, robustness, enumerations')
-    argparser.add_argument('-rc', '--container_size', metavar='container_size',
-                           type=int, nargs=2, default=None,
-                           help='resize container image')
-    argparser.add_argument('-rw', '--watermark_size', metavar='watermark_size',
-                           type=int, nargs=2, default=None,
-                           help='resize watermark')
-    argparser.add_argument('-sheet', '--xls_sheet', metavar='name',
-                           type=str, default='enum',
-                           help='sheet name of xlsx file')
-    argparser.add_argument('-exp', '--experiments_path', metavar='path',
-                           type=str, default='experiments/experiments.txt',
+
+    argparser.add_argument('-r', '--rc',
+                           dest='container_size',
+                           metavar='CONTAINER_SIZE',
+                           type=int,
+                           nargs=2,
+                           default=None,
+                           help='Resize container image.')
+
+    argparser.add_argument('-R', '--rsi',
+                           dest='watermark_size',
+                           metavar='SECRET_IMAGE_SIZE',
+                           type=int,
+                           nargs=2,
+                           default=None,
+                           help='Resize secret image.')
+
+    argparser.add_argument('-e', '--experiments',
+                           dest='experiments_path',
+                           metavar='EXPERIMENTS_PATH',
+                           type=str,
+                           default='experiments/experiments.txt',
                            help='path to list with experiments')
-    argparser.add_argument('-p', '--param', metavar='name',
-                           type=str, default='quant_power',
+
+    argparser.add_argument('-P', '--param',
+                           metavar='PARAM_TO_ENUMERATE',
+                           type=str,
+                           default='quant_power',
                            help='one of: ' + ", ".join(PARAMS_NAMES.keys()))
 
     args = argparser.parse_args()
@@ -44,6 +66,11 @@ def main():
         xls_path += 'qtar_vs_decfqtarpmsidct'
 
         table = qtar_vs_decfqtarpmwdct(params)
+
+    elif params['experiment'] == 'cfqtar-vs-decfqtarpmsidct':
+        xls_path += 'cfqtar_vs_decfqtarpmsidct'
+
+        table = cfqtar_vs_decfqtarpmwdct(params)
 
     elif params['experiment'] == 'efficiency':
         xls_path += ('pm_' if params['pm_mode'] else '') \
@@ -73,11 +100,17 @@ def main():
 
     print(table)
 
+    os.makedirs(os.path.dirname(xls_path), exist_ok=True)
+
     while True:
         try:
-            table.to_excel(xls_path, sheet_name=params['xls_sheet'])
+            table.to_excel(xls_path, sheet_name='enum')
             break
         except PermissionError:
-            print('Cant save results. Please close %s' % params['xls_path'])
+            print('Cant save results. Please close %s' % xls_path)
             input()
             continue
+
+
+if __name__ == "__main__":
+    main()

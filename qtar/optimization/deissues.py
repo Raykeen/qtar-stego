@@ -64,7 +64,7 @@ class OptIssue1(OptIssueBase):
         def_bpp = default_metrics['container bpp']
         params = copy(params)
         params['homogeneity_threshold'] = th[0]
-        qtar = QtarStego.from_dict(params)
+        qtar = QtarStego(**params)
 
         embed_result = qtar.embed(container, watermark)
 
@@ -105,7 +105,7 @@ class OptIssue2(OptIssueBase):
     def func(cls, threshold, container, watermark, params, default_metrics, callback):
         params = copy(params)
         params['homogeneity_threshold'] = threshold
-        qtar = QtarStego.from_dict(params)
+        qtar = QtarStego(**params)
         embed_result = qtar.embed(container, watermark)
 
         cls.eval_callback(callback)
@@ -137,7 +137,7 @@ class OptIssue3(OptIssueBase):
     def func(cls, offset, container, watermark, params, default_metrics, callback):
         params = copy(params)
         params['offset'] = array(offset).astype(int)
-        qtar = QtarStego.from_dict(params)
+        qtar = QtarStego(**params)
         embed_result = qtar.embed(container, watermark)
 
         cls.eval_callback(callback)
@@ -169,7 +169,7 @@ class OptIssue4(OptIssueBase):
     def func(cls, offset, container, watermark, params, default_metrics, callback):
         params = copy(params)
         params['offset'] = array(offset).astype(int)
-        qtar = QtarStego.from_dict(params)
+        qtar = QtarStego(**params)
         embed_result = qtar.embed(container, watermark)
 
         cls.eval_callback(callback)
@@ -206,7 +206,7 @@ class OptIssue5(OptIssueBase):
         params['max_block_size'] = max_b
         params['quant_power'] = qp
         params['ch_scale'] = sc
-        qtar = QtarStego.from_dict(params)
+        qtar = QtarStego(**params)
 
         embed_result = qtar.embed(container, watermark)
 
@@ -250,7 +250,7 @@ class OptIssue6(OptIssueBase):
         params['max_block_size'] = max_b
         params['quant_power'] = qp
         params['ch_scale'] = sc
-        qtar = QtarStego.from_dict(params)
+        qtar = QtarStego(**params)
         embed_result = qtar.embed(container, watermark)
 
         cls.eval_callback(callback)
@@ -300,7 +300,7 @@ class OptIssue7(OptIssueBase):
         params['max_block_size'] = max_b
         params['quant_power'] = qp
         params['ch_scale'] = sc
-        qtar = QtarStego.from_dict(params)
+        qtar = QtarStego(**params)
 
         maxbpp = len(container.getbands()) * 8
         try:
@@ -368,7 +368,7 @@ class OptIssue8(OptIssueBase):
         params['offset'] = (x, y)
         params['quant_power'] = qp
         params['ch_scale'] = sc
-        qtar = QtarStego.from_dict(params)
+        qtar = QtarStego(**params)
 
         maxbpp = len(container.getbands()) * 8
 
@@ -430,7 +430,7 @@ class OptIssue9(OptIssueBase):
         params = copy(params)
         params['homogeneity_threshold'] = th
         params['offset'] = (x, y)
-        qtar = QtarStego.from_dict(params)
+        qtar = QtarStego(**params)
 
         embed_result = qtar.embed(container, watermark)
 
@@ -479,7 +479,7 @@ class OptIssue10(OptIssueBase):
         th = (args[0], args[1], args[2])
         params = copy(params)
         params['homogeneity_threshold'] = th
-        qtar = QtarStego.from_dict(params)
+        qtar = QtarStego(**params)
 
         embed_result = qtar.embed(container, watermark)
 
@@ -537,7 +537,7 @@ class OptIssue11(OptIssueBase):
         params = copy(params)
         params.update(new_params)
 
-        qtar = QtarStego.from_dict(params)
+        qtar = QtarStego(**params)
 
         try:
             embed_result = qtar.embed(container, watermark)
@@ -608,7 +608,7 @@ class OptIssue12(OptIssueBase):
 
         params.update(new_params)
 
-        qtar = QtarStego.from_dict(params)
+        qtar = QtarStego(**params)
 
         try:
             embed_result = qtar.embed(container, watermark)
@@ -678,7 +678,7 @@ class OptIssue13(OptIssueBase):
         params = copy(params)
         params.update(new_params)
 
-        qtar = QtarStego.from_dict(params)
+        qtar = QtarStego(**params)
 
         try:
             embed_result = qtar.embed(container, watermark)

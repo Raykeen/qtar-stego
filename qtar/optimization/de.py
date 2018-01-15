@@ -4,9 +4,10 @@ from copy import copy
 from PIL import Image
 from scipy.optimize import differential_evolution
 
-from qtar.core.argparser import create_argpaser, validate_params
+from qtar.cli.test import test
+from qtar.cli.embed import get_embed_argparser
+from qtar.cli.qtarargparser import validate_params
 from qtar.optimization.deissues import ISSUES
-from qtar.cli import embed
 from qtar.utils import benchmark, print_progress_bar
 from qtar.utils.xlsx import save_de_results
 
@@ -27,18 +28,18 @@ Optimization issue:
 def main():
     issue_descriptions = ['%d: %s' % (i+1, Issue.desc) for i, Issue in enumerate(ISSUES)]
 
-    argparser = create_argpaser()
-    argparser.add_argument('issue', type=int, default=0,
+    argparser = get_embed_argparser()
+    argparser.add_argument('issue',
+                           type=int,
+                           default=0,
                            help='0: Run all optimizations\n' + '\n'.join(issue_descriptions))
-    argparser.add_argument('-xls', '--xls_path', metavar='path',
-                           type=str, default=None,
-                           help='save results to xls file')
-    argparser.add_argument('-rc', '--container_size', metavar='container_size',
-                           type=int, nargs=2, default=None,
-                           help='resize container image')
-    argparser.add_argument('-rw', '--watermark_size', metavar='watermark_size',
-                           type=int, nargs=2, default=None,
-                           help='resize watermark')
+
+    argparser.add_argument('-x', '--xls',
+                           metavar='EXCEL_FILE',
+                           type=str,
+                           default=DE_RESULT_XLS,
+                           help='Save results to xls file.')
+
     args = argparser.parse_args()
 
     params = validate_params(vars(args))
@@ -57,10 +58,11 @@ def run_de(params, Issue):
     watermark = Image.open(params['watermark'])
     if params['watermark_size']:
         watermark = watermark.resize((params['watermark_size'][0], params['watermark_size'][1]), Image.BILINEAR)
+
     params['save_stages'] = False
     params['key'] = None
     print('Embedding with default params:')
-    def_metrics = embed(params)
+    def_metrics = test(params)
 
     de_info = DE_INFO_TEMPLATE.format(i=Issue)
     print(de_info)
@@ -90,12 +92,12 @@ def run_de(params, Issue):
     print('Embedding with new params:')
     def_params = copy(params)
     params.update(new_params)
-    new_metrics = embed(params)
+    new_metrics = test(params)
 
     if params['xls_path']:
         while True:
             try:
-                save_de_results(DE_RESULT_XLS, def_params, new_params, def_metrics, new_metrics)
+                save_de_results(params['xls_path'], def_params, new_params, def_metrics, new_metrics)
                 break
             except PermissionError:
                 print('Cant save results. Please close %s' % DE_RESULT_XLS, file=sys.stderr)
