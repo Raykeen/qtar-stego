@@ -1,1 +1,0 @@
-Steganography utility for embedding/extracting secret images into another images using QTAR algorithm and its modifications.
