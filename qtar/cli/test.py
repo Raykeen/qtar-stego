@@ -9,7 +9,7 @@ from qtar.optimization.metrics import psnr, bcr, ssim
 from qtar.utils import benchmark, save_file
 from qtar.utils.stamp import stamp_image
 
-STAGES_DIR = "stages\\"
+STAGES_DIR = "results\\stages\\"
 EMBEDDING_INFO_TEMPLATE = """Embedding {watermark} in {container} using QTAR
 
 QTAR params:

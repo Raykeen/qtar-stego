@@ -9,7 +9,7 @@ from qtar.experiments.filters import filters
 
 pd.set_option('display.expand_frame_repr', False)
 
-PATHS_TO_RESULT_IMAGES = 'experiments\\robustness'
+PATHS_TO_RESULT_IMAGES = 'results\\robustness'
 
 
 def robustness(params):
