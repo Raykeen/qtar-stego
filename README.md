@@ -1,4 +1,5 @@
-# QTAR Stego
+<img src="resources/icon.png" height="48" width="48" align="absmiddle"> QTAR Stego
+====================================================================================
 Steganography utility for embedding/extracting secret images into another images using high-capacity QTAR algorithm and its modifications.
 
 ## Install
